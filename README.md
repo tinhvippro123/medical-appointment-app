@@ -76,3 +76,26 @@ flutter run
 ```
 main → develop → feature/tên-chức-năng
 ```
+## Trang chủ Y tế Hiệp Phước
+
+Chạy `flutter pub get`, sau đó `flutter run`. Home dùng dữ liệu cục bộ, không
+cần API. Có 6 chức năng: Đặt khám, Lịch sử đặt khám, Hóa đơn, Hồ sơ sức khỏe,
+Lắng nghe khách hàng, Hướng dẫn sử dụng. Các chức năng nghiệp vụ hiện mở
+màn hình chờ phát triển. Header và thanh điều hướng hiện tại được giữ lại.
+
+Icon dịch vụ dùng ảnh minh họa pastel trong ô vuông bo góc, nhãn màu xanh đậm.
+Các file nằm tại `assets/images/services/`. Banner ảnh tòa nhà bo góc, tỷ lệ
+2.55:1, không phủ chữ, dùng `assets/images/health_center_banner.png`.
+Các ảnh được đóng gói trong app, không tải online; không thêm dependency.
+Ảnh khuôn viên là minh họa tạo mới, không phải ảnh cơ sở Hiệp Phước thực tế.
+Thông tin prompt và nguồn tạo lưu trong `assets/images/ARTWORK.md`.
+
+Home hiện dùng dữ liệu cục bộ, chưa gọi API.
+
+Kiểm tra bằng `flutter analyze` và `flutter test`.
+
+Nút sắp xếp mở trang riêng: nhấn giữ và kéo thả 6 chức năng, Cài đặt lại để
+khôi phục mặc định, Lưu thay đổi để áp dụng và lưu vào shared_preferences.
+Quay lại khi chưa lưu không thay đổi Home. Lockfile giữ plugin Apple
+shared_preferences_foundation 2.5.0 tương thích để widget tests Windows không
+phụ thuộc compiler Objective-C/native assets của bản 2.6.0.
