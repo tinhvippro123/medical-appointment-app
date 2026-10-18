@@ -68,19 +68,3 @@ const homeServices = [
     'assets/images/services/guide.png',
   ),
 ];
-// Dữ liệu mẫu cho giao diện, chưa phải tin chính thức của trung tâm.
-const demoFeaturedNews = [
-  Announcement(
-    'Cùng tham gia cuộc thi tìm hiểu quy định pháp luật về phòng, chống tác hại của thuốc lá',
-    '18/10/2026',
-    Icons.campaign_outlined,
-    Color(0xff1677e8),
-  ),
-  Announcement(
-    'Thông báo về việc tìm chủ sở hữu của tài sản do người bệnh, thân nhân để quên',
-    '17/10/2026',
-    Icons.article_outlined,
-    Color(0xff1677e8),
-  ),
-  ...demoAnnouncements,
-];

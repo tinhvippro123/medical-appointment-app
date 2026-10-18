@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medical_appointment_app/features/home/presentation/widgets/healthcare_functions_panel.dart';
 import 'package:medical_appointment_app/features/home/presentation/widgets/home_sections.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:medical_appointment_app/features/home/data/function_order_store.dart';
@@ -8,6 +9,28 @@ import 'package:medical_appointment_app/main.dart';
 import 'package:medical_appointment_app/features/home/presentation/widgets/home_header.dart';
 
 void main() {
+  testWidgets('Menu dưới có Trang chủ ở giữa và chuyển đủ 5 mục', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
+    for (final index in [0, 1, 3, 4]) {
+      await tester.tap(find.byKey(ValueKey('bottom-nav-$index')));
+      await tester.pumpAndSettle();
+      expect(find.byType(FeatureMessage).hitTestable(), findsOneWidget);
+    }
+    await tester.tap(find.byKey(const ValueKey('bottom-nav-2')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byType(HomeHeader),
+        matching: find.text('XÃ HIỆP PHƯỚC'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('Lưới chức năng không tạo kích thước âm khi viewport bằng 0', (
     tester,
   ) async {
@@ -35,7 +58,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'hoa don');
     await tester.pumpAndSettle();
-    expect(find.text('Hóa đơn'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(HealthcareFunctionsPanel),
+        matching: find.text('Hóa đơn'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Đặt khám'), findsNothing);
     await tester.tap(find.byTooltip('Đóng tìm kiếm'));
     await tester.pumpAndSettle();
@@ -86,19 +115,22 @@ void main() {
       const Offset(0, -400),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Xem thêm'));
-    await tester.tap(find.text('Xem thêm'));
+    await tester.ensureVisible(find.text('Thông tin trung tâm'));
+    expect(find.text('Giờ làm việc'), findsOneWidget);
     await tester.pumpAndSettle();
-    expect(
-      find.text('Thông báo tiêm chủng mở rộng tháng 10/2026'),
-      findsOneWidget,
-    );
+    expect(find.text('Địa chỉ'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     semantics.dispose();
   });
-  testWidgets('Dịch vụ và tin tức mở đúng màn hình', (tester) async {
+  testWidgets('Dịch vụ và thông tin trung tâm hiển thị đúng', (tester) async {
     await tester.pumpWidget(const MyApp());
-    expect(find.text('XÃ HIỆP PHƯỚC'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(HomeHeader),
+        matching: find.text('XÃ HIỆP PHƯỚC'),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.byTooltip('Thông báo'));
     await tester.pumpAndSettle();
     expect(find.byType(FeaturePlaceholder), findsOneWidget);
@@ -115,13 +147,10 @@ void main() {
     expect(find.text('Đặt khám'), findsNWidgets(2));
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Xem thêm'));
-    await tester.tap(find.text('Xem thêm'));
+    await tester.ensureVisible(find.text('Thông tin trung tâm'));
+    expect(find.text('Giờ làm việc'), findsOneWidget);
     await tester.pumpAndSettle();
-    expect(
-      find.text('Thông báo tiêm chủng mở rộng tháng 10/2026'),
-      findsOneWidget,
-    );
+    expect(find.text('Địa chỉ'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
   for (final width in [320.0, 390.0, 800.0]) {
