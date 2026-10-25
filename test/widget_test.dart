@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:medical_appointment_app/features/home/presentation/widgets/healthcare_functions_panel.dart';
-import 'package:medical_appointment_app/features/home/presentation/widgets/home_sections.dart';
+import 'package:medical_appointment_app/screens/home/widgets/healthcare_functions_panel.dart';
+import 'package:medical_appointment_app/screens/home/widgets/home_sections.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:medical_appointment_app/features/home/data/function_order_store.dart';
-import 'package:medical_appointment_app/features/home/presentation/function_order_page.dart';
+import 'package:medical_appointment_app/services/function_order_store.dart';
+import 'package:medical_appointment_app/screens/home/function_order_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medical_appointment_app/main.dart';
-import 'package:medical_appointment_app/features/home/presentation/widgets/home_header.dart';
+import 'package:medical_appointment_app/screens/home/widgets/home_header.dart';
 
 void main() {
   testWidgets('Menu dưới có Trang chủ ở giữa và chuyển đủ 5 mục', (

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../data/home_demo_data.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../models/home_demo_data.dart';
 
 class HealthcareServiceGrid extends StatelessWidget {
   const HealthcareServiceGrid({
