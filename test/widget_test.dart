@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:medical_appointment_app/features/home/presentation/widgets/healthcare_functions_panel.dart';
-import 'package:medical_appointment_app/features/home/presentation/widgets/home_sections.dart';
+import 'package:medical_appointment_app/screens/home/widgets/healthcare_functions_panel.dart';
+import 'package:medical_appointment_app/screens/home/widgets/home_sections.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:medical_appointment_app/features/home/data/function_order_store.dart';
-import 'package:medical_appointment_app/features/home/presentation/function_order_page.dart';
+import 'package:medical_appointment_app/screens/home/function_order_store.dart';
+import 'package:medical_appointment_app/screens/home/function_order_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medical_appointment_app/main.dart';
-import 'package:medical_appointment_app/features/home/presentation/widgets/home_header.dart';
+import 'package:medical_appointment_app/screens/home/home_page.dart';
+import 'package:medical_appointment_app/screens/home/widgets/home_header.dart';
 
 void main() {
   testWidgets('Menu dưới có Trang chủ ở giữa và chuyển đủ 5 mục', (
     tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(home: HomePage()));
     await tester.pumpAndSettle();
     for (final index in [0, 1, 3, 4]) {
       await tester.tap(find.byKey(ValueKey('bottom-nav-$index')));
@@ -46,14 +47,14 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(home: HomePage()));
     await tester.pumpAndSettle();
     expect(find.text('Đặt khám'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('Tìm kiếm không dấu và sắp xếp chức năng', (tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(home: HomePage()));
     await tester.tap(find.byTooltip('Tìm kiếm chức năng'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'hoa don');
@@ -106,7 +107,7 @@ void main() {
   ) async {
     final semantics = tester.ensureSemantics();
 
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(home: HomePage()));
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
@@ -123,7 +124,7 @@ void main() {
     semantics.dispose();
   });
   testWidgets('Dịch vụ và thông tin trung tâm hiển thị đúng', (tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(home: HomePage()));
     expect(
       find.descendant(
         of: find.byType(HomeHeader),
@@ -169,7 +170,7 @@ void main() {
             ).copyWith(textScaler: const TextScaler.linear(1.6)),
             child: child!,
           ),
-          home: const MyApp(),
+          home: const MyApp(home: HomePage()),
         ),
       );
       await tester.pump();

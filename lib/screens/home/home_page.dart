@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/widgets/reveal_content.dart';
+import '../../core/widgets/reveal_content.dart';
 
 import 'widgets/hero_banner.dart';
 import 'widgets/home_header.dart';
