@@ -1,5 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/home_demo_data.dart';
+import '../../models/home_demo_data.dart';
 
 class FunctionOrderStore {
   static const key = 'home_function_order_v1';

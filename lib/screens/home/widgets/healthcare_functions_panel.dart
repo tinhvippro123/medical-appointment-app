@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/home_demo_data.dart';
 import 'home_sections.dart';
-import '../../../services/function_order_store.dart';
+import '../function_order_store.dart';
 import '../function_order_page.dart';
 
 class HealthcareFunctionsPanel extends StatefulWidget {
