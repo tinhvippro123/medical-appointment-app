@@ -99,3 +99,27 @@ khôi phục mặc định, Lưu thay đổi để áp dụng và lưu vào shar
 Quay lại khi chưa lưu không thay đổi Home. Lockfile giữ plugin Apple
 shared_preferences_foundation 2.5.0 tương thích để widget tests Windows không
 phụ thuộc compiler Objective-C/native assets của bản 2.6.0.
+
+## Admin: Quản lý chuyên khoa
+
+Màn riêng tại route `/admin/departments`. Mở bằng
+`Navigator.pushNamed(context, '/admin/departments')` từ menu admin khi tích hợp
+phân quyền. Để kiểm tra giao diện trực tiếp:
+
+```bash
+flutter run --route=/admin/departments --dart-define=API_BASE_URL=http://192.168.1.10:5041
+```
+
+Thay địa chỉ bằng API truy cập được từ thiết bị. Android emulator mặc định
+`http://10.0.2.2:5041`; web/desktop mặc định localhost:5041. Header Bearer lấy
+token từ SessionHepler nếu có. Route chưa được gắn vào menu bệnh nhân;
+phân quyền admin cần được tích hợp với luồng đăng nhập và bảo vệ ở server.
+
+Danh sách gọi GET /api/departments; form dùng POST/PUT; ảnh JPG/PNG tối đa
+5 MB gửi multipart field `file` tới POST /api/departments/{id}/image.
+DELETE /api/departments/{id} xử lý mã DEPARTMENT_HAS_DOCTORS bằng SnackBar.
+Nếu thông tin đã lưu nhưng ảnh lỗi, form giữ ID vừa tạo và ảnh đã chọn để
+thử lại, không tạo trùng chuyên khoa. Quay lại lúc này sẽ tải lại danh sách.
+
+Thêm image_picker cho thư viện/camera và khai báo quyền sử dụng ảnh/camera iOS.
+Máy ảnh thật và API/database cần kiểm tra tích hợp trên thiết bị.
