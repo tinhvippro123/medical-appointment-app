@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:medical_appointment_app/screens/auth/login_page.dart';
 import 'core/theme/app_theme.dart';
+import 'screens/cart/cart_page.dart';
 
 void main() => runApp(const MyApp());
 
@@ -14,5 +15,6 @@ class MyApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: AppTheme.light,
     home: home ?? const LoginPage(),
+    routes: {'/cart': (_) => const CartPage()},
   );
 }

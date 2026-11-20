@@ -100,6 +100,7 @@ class _HomePageState extends State<HomePage>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         HomeHeader(
+          onCart: () => Navigator.of(context).pushNamed('/cart'),
           onNotifications: () =>
               open('Thông báo', Icons.notifications_none_rounded),
           onProfile: () => open('Hồ sơ cá nhân', Icons.account_circle_outlined),
