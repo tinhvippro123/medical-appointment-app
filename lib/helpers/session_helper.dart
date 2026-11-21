@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../repositories/cart_repository.dart';
 
 class SessionHepler {
   static const String _tokenKey = 'jwt_token';
@@ -14,6 +15,10 @@ class SessionHepler {
   }
 
   static Future<void> clear() async {
+    final token = await getToken();
+    if (token != null && token.isNotEmpty) {
+      await CartRepository().clear();
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
   }
