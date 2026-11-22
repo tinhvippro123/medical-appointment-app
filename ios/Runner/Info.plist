@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Chụp ảnh chuyên khoa để cập nhật thông tin.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Chọn ảnh minh họa cho chuyên khoa.</string>
 </dict>
 </plist>
+
+
