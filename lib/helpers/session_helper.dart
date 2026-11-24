@@ -25,6 +25,6 @@ class SessionHepler {
 
   static Future<bool> isLoggedIn() async {
     final token = await getToken();
-    return token != null && token.isEmpty;
+    return token != null && token.isNotEmpty;
   }
 }
