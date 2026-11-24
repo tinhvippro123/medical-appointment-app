@@ -31,6 +31,35 @@ class DoctorRepository {
     return Doctor.fromJson(res as Map<String, dynamic>);
   }
 
+  /// Tìm kiếm bác sĩ theo từ khóa và chuyên khoa có phân trang (GET /api/doctors/search)
+  Future<PagedResult<Doctor>> searchDoctors({
+    String? keyword,
+    int? departmentId,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      'pageSize': pageSize,
+    };
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      queryParams['keyword'] = keyword.trim();
+    }
+    if (departmentId != null) {
+      queryParams['departmentId'] = departmentId;
+    }
+
+    final res = await _apiClient.get(
+      '/api/doctors/search',
+      queryParameters: queryParams,
+    );
+
+    return PagedResult<Doctor>.fromJson(
+      res as Map<String, dynamic>,
+      (j) => Doctor.fromJson(j as Map<String, dynamic>),
+    );
+  }
+
   /// Thêm bác sĩ mới (POST /api/doctors) dùng multipart/form-data
   Future<Doctor> createDoctor(
     DoctorFormInput input, {

@@ -5,6 +5,7 @@ import 'screens/admin/departments/department_admin_page.dart';
 import 'screens/admin/doctors/doctor_admin_page.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/cart/cart_page.dart';
+import 'screens/doctors/search/doctor_search_page.dart';
 
 void main() => runApp(const MyApp());
 
@@ -28,6 +29,21 @@ class MyApp extends StatelessWidget {
         '/admin': (_) => const AdminHomePage(),
         '/admin/departments': (_) => const DepartmentAdminPage(),
         '/admin/doctors': (_) => const DoctorAdminPage(),
+        '/doctors/search': (context) {
+          final initialKeyword =
+              ModalRoute.of(context)?.settings.arguments as String?;
+          return DoctorSearchPage(initialKeyword: initialKeyword);
+        },
+        // TODO(F4): thay bằng màn chi tiết thật
+        '/doctors/detail': (context) {
+          final doctorId = ModalRoute.of(context)?.settings.arguments;
+          return Scaffold(
+            appBar: AppBar(title: const Text('Chi tiết bác sĩ')),
+            body: Center(
+              child: Text('Chi tiết bác sĩ ID: $doctorId'),
+            ),
+          );
+        },
       },
       home: home,
     );
