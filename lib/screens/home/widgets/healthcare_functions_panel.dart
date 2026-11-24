@@ -171,9 +171,16 @@ class _HealthcareFunctionsPanelState extends State<HealthcareFunctionsPanel> {
                 controller: controller,
                 autofocus: true,
                 onChanged: (value) => setState(() => query = value),
+                onSubmitted: (value) =>
+                    Navigator.of(context).pushNamed('/doctors/search', arguments: value),
                 decoration: InputDecoration(
-                  hintText: 'Tìm chức năng...',
-                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Tìm chức năng hoặc bác sĩ...',
+                  prefixIcon: IconButton(
+                    tooltip: 'Tìm kiếm bác sĩ',
+                    icon: const Icon(Icons.search),
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed('/doctors/search', arguments: controller.text),
+                  ),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -185,11 +192,22 @@ class _HealthcareFunctionsPanelState extends State<HealthcareFunctionsPanel> {
             ),
           const SizedBox(height: 16),
           if (services.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Không tìm thấy chức năng phù hợp.',
-                textAlign: TextAlign.center,
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  const Text(
+                    'Không tìm thấy chức năng phù hợp.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton.tonalIcon(
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed('/doctors/search', arguments: controller.text),
+                    icon: const Icon(Icons.person_search_outlined),
+                    label: const Text('Tìm kiếm bác sĩ'),
+                  ),
+                ],
               ),
             )
           else
