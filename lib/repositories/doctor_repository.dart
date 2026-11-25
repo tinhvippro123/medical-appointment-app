@@ -1,5 +1,6 @@
 import '../core/network/api_client.dart';
 import '../models/doctor.dart';
+import '../models/doctor_day_off.dart';
 import '../models/paged_result.dart';
 
 class DoctorRepository {
@@ -45,6 +46,32 @@ class DoctorRepository {
   Future<Doctor> getDoctorById(int id) async {
     final res = await _apiClient.get('/api/doctors/$id');
     return Doctor.fromJson(res as Map<String, dynamic>);
+  }
+
+  /// Lấy danh sách ngày nghỉ của bác sĩ trong khoảng [from, to] (GET /api/doctors/{doctorId}/day-offs)
+  Future<List<DoctorDayOff>> getDoctorDayOffs(
+    int doctorId, {
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    String fmt(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    final queryParams = <String, dynamic>{};
+    if (from != null) queryParams['from'] = fmt(from);
+    if (to != null) queryParams['to'] = fmt(to);
+
+    final res = await _apiClient.get(
+      '/api/doctors/$doctorId/day-offs',
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+    if (res is List) {
+      return res
+          .whereType<Map>()
+          .map((e) => DoctorDayOff.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+    return [];
   }
 
   /// Lấy danh sách bác sĩ cùng chuyên khoa (GET /api/doctors/{id}/related)

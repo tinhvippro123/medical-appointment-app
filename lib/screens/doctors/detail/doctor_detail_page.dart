@@ -158,7 +158,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     }
 
     try {
-      // TODO([D]): Điều hướng sang màn Chọn ngày giờ đặt khám khi card [D] hoàn thành
       await Navigator.pushNamed(context, '/booking', arguments: _doctor!.id);
     } catch (_) {
       if (!mounted) return;
