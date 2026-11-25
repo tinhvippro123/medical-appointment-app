@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'models/department.dart';
 import 'models/doctor.dart';
+import 'models/patient_profile.dart';
 import 'screens/account/change_password_page.dart';
 import 'screens/admin/admin_dashboard_page.dart';
 import 'screens/admin/departments/department_admin_page.dart';
 import 'screens/admin/doctors/doctor_admin_page.dart';
+import 'screens/admin/doctors/schedule/doctor_schedule_page.dart';
+import 'screens/admin/orders/admin_order_page.dart';
 import 'screens/admin/roles/role_admin_page.dart';
 import 'screens/admin/users/user_admin_page.dart';
 import 'screens/auth/auth_gate_page.dart';
-import 'screens/admin/orders/admin_order_page.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/booking/booking_page.dart';
 import 'screens/cart/cart_page.dart';
@@ -17,6 +19,7 @@ import 'screens/departments/department_list_page.dart';
 import 'screens/doctors/detail/doctor_detail_page.dart';
 import 'screens/doctors/search/doctor_search_page.dart';
 import 'screens/home/home_page.dart';
+import 'screens/patient_profiles/patient_profiles_page.dart';
 
 void main() => runApp(const MyApp());
 
@@ -39,13 +42,42 @@ class MyApp extends StatelessWidget {
         '/login': (_) => const LoginPage(),
         '/home': (_) => const HomePage(),
         '/cart': (_) => const CartPage(),
-        '/departments': (_) => const DepartmentListPage(),
+        '/booking/patient': (_) => const PatientProfilesPage(forBooking: true),
+        '/departments': (context) {
+          final patient = ModalRoute.of(context)?.settings.arguments;
+          return DepartmentListPage(
+            patient: patient is PatientProfile ? patient : null,
+          );
+        },
         '/admin': (_) => const AdminDashboardPage(),
         '/admin/users': (_) => const UserAdminPage(),
         '/admin/roles': (_) => const RoleAdminPage(),
         '/admin/departments': (_) => const DepartmentAdminPage(),
         '/admin/doctors': (_) => const DoctorAdminPage(),
         '/admin/orders': (_) => const AdminOrderPage(),
+        '/admin/doctors/schedules': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          int? doctorId;
+          String? doctorName;
+          if (args is DoctorScheduleRouteArgs) {
+            doctorId = args.doctorId;
+            doctorName = args.doctorName;
+          } else if (args is Map) {
+            final rawId = args['doctorId'];
+            doctorId = rawId is int
+                ? rawId
+                : int.tryParse(rawId?.toString() ?? '');
+            doctorName = args['doctorName']?.toString();
+          } else if (args is Doctor) {
+            doctorId = args.id;
+            doctorName = args.fullName;
+          } else if (args is int) {
+            doctorId = args;
+          } else if (args is String) {
+            doctorId = int.tryParse(args);
+          }
+          return DoctorSchedulePage(doctorId: doctorId, doctorName: doctorName);
+        },
         '/doctors': (context) {
           final argument = ModalRoute.of(context)?.settings.arguments;
           return DoctorSearchPage(

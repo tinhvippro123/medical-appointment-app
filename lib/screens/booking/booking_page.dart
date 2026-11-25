@@ -18,6 +18,7 @@ class BookingPage extends StatefulWidget {
   const BookingPage({
     super.key,
     this.doctorId,
+    this.patient,
     this.doctorRepository,
     this.cartRepository,
     this.patientProfileRepository,
@@ -26,6 +27,7 @@ class BookingPage extends StatefulWidget {
   });
 
   final int? doctorId;
+  final PatientProfile? patient;
   final DoctorRepository? doctorRepository;
   final CartRepository? cartRepository;
   final PatientProfileRepository? patientProfileRepository;
@@ -223,14 +225,23 @@ class _BookingPageState extends State<BookingPage> {
     }
 
     try {
-      final list = await _patientProfileRepository.getProfiles();
+      final fetched = await _patientProfileRepository.getProfiles();
       if (!mounted || activeRequestId != _currentRequestId) return;
+
+      final list = List<PatientProfile>.from(fetched);
+      final preferredPatient = widget.patient;
+      if (preferredPatient != null &&
+          !list.any((p) => p.id == preferredPatient.id)) {
+        list.insert(0, preferredPatient);
+      }
 
       setState(() {
         _profiles = list;
         _isLoadingProfiles = false;
         _requiresLogin = false;
-        if (list.isEmpty) {
+        if (preferredPatient != null) {
+          _selectedProfileId = preferredPatient.id;
+        } else if (list.isEmpty) {
           _selectedProfileId = null;
         } else if (_selectedProfileId == null ||
             !list.any((p) => p.id == _selectedProfileId)) {

@@ -149,7 +149,7 @@ void main() {
     await tester.ensureVisible(find.text('Đặt khám'));
     await tester.tap(find.text('Đặt khám'));
     await tester.pumpAndSettle();
-    expect(find.text('Danh sách chuyên khoa'), findsOneWidget);
+    expect(find.text('Chọn hồ sơ'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Thông tin trung tâm'));

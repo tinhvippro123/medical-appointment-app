@@ -172,29 +172,33 @@ class DoctorAdminCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        doctor.feeFormatted,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          doctor.feeFormatted,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${doctor.experienceYears} năm kinh nghiệm',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.muted,
+                        Text(
+                          '${doctor.experienceYears} năm kinh nghiệm',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Nút Lịch làm việc (chuẩn bị cho card F3)
+                      // Nút Lịch làm việc
                       OutlinedButton.icon(
                         key: ValueKey('schedule-doctor-${doctor.id}'),
                         onPressed: onSchedule,
@@ -213,7 +217,7 @@ class DoctorAdminCard extends StatelessWidget {
                           color: AppColors.primary,
                         ),
                         label: const Text(
-                          'Lịch khám',
+                          'Lịch làm việc',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.primary,

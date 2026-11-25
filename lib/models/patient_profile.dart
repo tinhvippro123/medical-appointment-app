@@ -10,7 +10,7 @@ class PatientProfile {
     required this.id,
     required this.fullName,
     this.dateOfBirth,
-    required this.gender,
+    this.gender = '',
     required this.relationship,
   });
 
@@ -22,6 +22,9 @@ class PatientProfile {
     if (rel.isEmpty) return name;
     return '$name ($rel)';
   }
+
+  /// Nhãn hiển thị dùng ở danh sách chọn hồ sơ đặt khám
+  String get label => '$fullName — $relationship';
 
   factory PatientProfile.fromJson(Map<String, dynamic> json) => PatientProfile(
     id: (json['id'] as num?)?.toInt() ?? 0,

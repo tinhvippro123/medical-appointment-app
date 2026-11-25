@@ -122,6 +122,25 @@ class CartRepository {
       ((await request('GET', '/api/cart')) as List)
           .map((e) => CartItem.fromJson(e))
           .toList();
+
+  Future<void> add({
+    required int doctorId,
+    required int patientProfileId,
+    required DateTime date,
+    required String slot,
+  }) async {
+    await request(
+      'POST',
+      '/api/cart',
+      body: {
+        'doctorId': doctorId,
+        'patientProfileId': patientProfileId,
+        'appointmentDate': date.toIso8601String().split('T').first,
+        'timeSlot': slot,
+      },
+    );
+  }
+
   Future<List<Schedule>> schedules(int doctorId) async =>
       ((await request('GET', '/api/doctors/$doctorId/schedules')) as List)
           .map((e) => Schedule.fromJson(e))
