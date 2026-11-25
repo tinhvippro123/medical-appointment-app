@@ -12,12 +12,12 @@ class OnlinePaymentPage extends StatefulWidget {
   const OnlinePaymentPage({
     super.key,
     required this.order,
-    this.initialMethod,
+    required this.method,
     this.repository,
   });
 
   final Order order;
-  final String? initialMethod;
+  final String method;
   final PaymentRepository? repository;
 
   @override
@@ -27,14 +27,6 @@ class OnlinePaymentPage extends StatefulWidget {
 class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
   late final PaymentRepository _repository =
       widget.repository ?? PaymentRepository();
-
-  late String _selectedMethod =
-      (widget.initialMethod ?? widget.order.paymentMethod)
-                  .trim()
-                  .toLowerCase() ==
-              'vnpay'
-          ? 'VNPay'
-          : 'VietQR';
 
   bool _isLoadingSession = true;
   bool _isSubmitting = false;
@@ -58,7 +50,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
     });
 
     try {
-      if (_selectedMethod == 'VNPay') {
+      if (widget.method == 'VNPay') {
         final session = await _repository.createVnPay(widget.order.id);
         if (!mounted) return;
         setState(() => _vnPaySession = session);
@@ -83,19 +75,13 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
     }
   }
 
-  void _switchMethod(String method) {
-    if (_selectedMethod == method || _isSubmitting) return;
-    setState(() => _selectedMethod = method);
-    _initPaymentSession();
-  }
-
   Future<void> _completePayment({required bool simulateFailure}) async {
     if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
 
     try {
       PaymentResult result;
-      if (_selectedMethod == 'VNPay' && _vnPaySession != null) {
+      if (widget.method == 'VNPay' && _vnPaySession != null) {
         final url = simulateFailure
             ? _vnPaySession!.callbackCancelUrl
             : _vnPaySession!.callbackSuccessUrl;
@@ -103,7 +89,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
       } else {
         result = await _repository.confirmPayment(
           orderId: widget.order.id,
-          provider: _selectedMethod,
+          provider: widget.method,
           simulateFailure: simulateFailure,
         );
       }
@@ -143,39 +129,6 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text('Đã sao chép $label')));
-  }
-
-  Widget _buildMethodSelector() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xfff1f5f9),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _MethodTab(
-              tabKey: const ValueKey('payment-tab-vietqr'),
-              label: 'Chuyển khoản VietQR',
-              icon: Icons.qr_code_scanner_rounded,
-              selected: _selectedMethod == 'VietQR',
-              onTap: () => _switchMethod('VietQR'),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: _MethodTab(
-              tabKey: const ValueKey('payment-tab-vnpay'),
-              label: 'Cổng VNPay',
-              icon: Icons.account_balance_wallet_outlined,
-              selected: _selectedMethod == 'VNPay',
-              onTap: () => _switchMethod('VNPay'),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildVietQrView(VietQrSession session) {
@@ -461,7 +414,10 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
                 const SizedBox(height: 18),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
-                _InfoLine(label: 'Mã đơn đặt lịch', value: '#${result.orderId}'),
+                _InfoLine(
+                  label: 'Mã đơn đặt lịch',
+                  value: '#${result.orderId}',
+                ),
                 _InfoLine(label: 'Phương thức', value: result.paymentMethod),
                 _InfoLine(
                   label: 'Số tiền',
@@ -520,7 +476,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Thanh toán Đơn #${widget.order.id}'),
+        title: Text('Thanh toán ${widget.method} · Đơn #${widget.order.id}'),
       ),
       body: SafeArea(
         child: _paymentResult != null
@@ -550,9 +506,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      _buildMethodSelector(),
-                      const SizedBox(height: 16),
-                      if (_selectedMethod == 'VNPay' && _vnPaySession != null)
+                      if (_vnPaySession != null)
                         _buildVnPayView(_vnPaySession!)
                       else if (_vietQrSession != null)
                         _buildVietQrView(_vietQrSession!),
@@ -560,60 +514,6 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
                   ),
                 ),
               ),
-      ),
-    );
-  }
-}
-
-class _MethodTab extends StatelessWidget {
-  const _MethodTab({
-    required this.tabKey,
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Key tabKey;
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? Colors.white : Colors.transparent,
-      borderRadius: BorderRadius.circular(11),
-      child: InkWell(
-        key: tabKey,
-        borderRadius: BorderRadius.circular(11),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: selected ? AppColors.primary : AppColors.muted,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    color: selected ? AppColors.primary : AppColors.muted,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

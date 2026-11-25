@@ -162,6 +162,9 @@ void main() {
     // Mở thẳng màn hình quét mã VietQR ngay khi bấm Xác nhận đặt lịch
     expect(find.byType(OnlinePaymentPage), findsOneWidget);
     expect(find.text('YTEHP DH9'), findsOneWidget);
+    expect(find.text('Thanh toán VietQR · Đơn #9'), findsOneWidget);
+    expect(find.text('Cổng VNPay'), findsNothing);
+    expect(find.byKey(const ValueKey('payment-tab-vietqr')), findsNothing);
     final payConfirmBtn = find.byKey(
       const ValueKey('payment-confirm-success-btn'),
     );
