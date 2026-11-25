@@ -44,6 +44,68 @@ Map<String, dynamic> sampleDoctorJson({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  testWidgets('Danh sách tự tải trang 2 và thử lại khi gặp lỗi', (
+    tester,
+  ) async {
+    final pages = <String?>[];
+    var failed = false;
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/doctors');
+      final page = request.url.queryParameters['page'];
+      pages.add(page);
+      if (page == '2' && !failed) {
+        failed = true;
+        return http.Response('{}', 503);
+      }
+      final firstPage = page == '1';
+      return http.Response.bytes(
+        utf8.encode(
+          jsonEncode({
+            'items': firstPage
+                ? List.generate(10, (index) => sampleDoctorJson(id: index + 1))
+                : [sampleDoctorJson(id: 11, name: 'Bác sĩ trang sau')],
+            'page': firstPage ? 1 : 2,
+            'hasNextPage': firstPage,
+          }),
+        ),
+        200,
+      );
+    });
+    addTearDown(client.close);
+    final repository = DoctorRepository(
+      apiClient: ApiClient(
+        client: client,
+        baseUrl: 'http://test.api',
+        tokenProvider: () async => null,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: DoctorSearchPage(browse: true, repository: repository)),
+    );
+    await tester.pumpAndSettle();
+    expect(pages, ['1']);
+    for (var attempt = 0; attempt < 8 && pages.length == 1; attempt++) {
+      await tester.drag(find.byType(ListView), const Offset(0, -350));
+      await tester.pumpAndSettle();
+    }
+    expect(pages, ['1', '2']);
+    expect(find.byType(DoctorSearchCard), findsWidgets);
+    final retry = find.text('Tải thêm thất bại. Thử lại');
+    await tester.ensureVisible(retry);
+    await tester.tap(retry);
+    await tester.pumpAndSettle();
+    expect(pages, ['1', '2', '2']);
+    await tester.scrollUntilVisible(
+      find.textContaining('Bác sĩ trang sau'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.textContaining('Bác sĩ trang sau'), findsOneWidget);
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });

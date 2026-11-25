@@ -21,7 +21,7 @@ void main() {
           {'id': 2, 'name': 'Tim mạch'},
           {'id': 7, 'name': 'Nhi khoa'},
         ],
-        '/api/doctors/search' => {
+        '/api/departments/7/doctors' || '/api/doctors/search' => {
           'items': [],
           'page': 1,
           'pageSize': 10,
@@ -50,7 +50,8 @@ void main() {
       MaterialApp(
         home: DepartmentListPage(repository: departments),
         routes: {
-          '/doctors/search': (context) => DoctorSearchPage(
+          '/doctors': (context) => DoctorSearchPage(
+            browse: true,
             department:
                 ModalRoute.of(context)!.settings.arguments as Department,
             repository: doctors,
@@ -66,7 +67,8 @@ void main() {
     expect(find.text('Nhi khoa'), findsOneWidget);
     expect(find.text('Chuyên khoa này chưa có bác sĩ.'), findsOneWidget);
     expect(requests.first.path, '/api/departments');
-    expect(requests.last.queryParameters['departmentId'], '7');
+    expect(requests.last.path, '/api/departments/7/doctors');
+    expect(requests.last.queryParameters['page'], '1');
 
     await tester.enterText(find.byType(TextField), 'An');
     await tester.pump(const Duration(milliseconds: 500));

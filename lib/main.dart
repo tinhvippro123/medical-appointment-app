@@ -33,6 +33,13 @@ class MyApp extends StatelessWidget {
         '/admin': (_) => const AdminHomePage(),
         '/admin/departments': (_) => const DepartmentAdminPage(),
         '/admin/doctors': (_) => const DoctorAdminPage(),
+        '/doctors': (context) {
+          final argument = ModalRoute.of(context)?.settings.arguments;
+          return DoctorSearchPage(
+            browse: true,
+            department: argument is Department ? argument : null,
+          );
+        },
         '/doctors/search': (context) {
           final argument = ModalRoute.of(context)?.settings.arguments;
           return DoctorSearchPage(

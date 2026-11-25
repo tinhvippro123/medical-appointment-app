@@ -25,6 +25,22 @@ class DoctorRepository {
     );
   }
 
+  /// Lấy danh sách bác sĩ đang hoạt động trong chuyên khoa.
+  Future<PagedResult<Doctor>> getDepartmentDoctors(
+    int departmentId, {
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    final result = await _apiClient.get(
+      '/api/departments/$departmentId/doctors',
+      queryParameters: {'page': page, 'pageSize': pageSize},
+    );
+    return PagedResult<Doctor>.fromJson(
+      result as Map<String, dynamic>,
+      (item) => Doctor.fromJson(item as Map<String, dynamic>),
+    );
+  }
+
   /// Lấy chi tiết thông tin bác sĩ theo id
   Future<Doctor> getDoctorById(int id) async {
     final res = await _apiClient.get('/api/doctors/$id');
