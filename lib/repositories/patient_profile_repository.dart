@@ -1,8 +1,7 @@
 import '../core/network/api_client.dart';
 import '../models/patient_profile.dart';
 
-/// Repository quản lý đọc hồ sơ bệnh nhân của người dùng hiện tại.
-/// Card F6 sẽ mở rộng thêm create/update/delete trên lớp này.
+/// Repository quản lý hồ sơ bệnh nhân của người dùng hiện tại.
 class PatientProfileRepository {
   PatientProfileRepository({ApiClient? apiClient})
     : _apiClient = apiClient ?? ApiClient();
@@ -21,5 +20,25 @@ class PatientProfileRepository {
           .toList();
     }
     return [];
+  }
+
+  Future<List<PatientProfile>> list() => getProfiles();
+
+  Future<PatientProfile> create({
+    required String fullName,
+    required DateTime dateOfBirth,
+    required String gender,
+    required String relationship,
+  }) async {
+    final data = await _apiClient.post(
+      '/api/patient-profiles',
+      body: {
+        'fullName': fullName,
+        'dateOfBirth': dateOfBirth.toIso8601String().split('T').first,
+        'gender': gender,
+        'relationship': relationship,
+      },
+    );
+    return PatientProfile.fromJson(Map<String, dynamic>.from(data as Map));
   }
 }
