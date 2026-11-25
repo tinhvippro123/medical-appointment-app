@@ -7,10 +7,8 @@ class HomeHeader extends StatelessWidget {
     super.key,
     required this.onNotifications,
     required this.onProfile,
-    required this.onCart,
   });
   final VoidCallback onNotifications, onProfile;
-  final VoidCallback onCart;
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
     value: const SystemUiOverlayStyle(
@@ -130,20 +128,6 @@ class HomeHeader extends StatelessWidget {
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: 'Giỏ hàng lịch hẹn',
-                            onPressed: onCart,
-                            constraints: const BoxConstraints(
-                              minWidth: 40,
-                              minHeight: 48,
-                            ),
-                            padding: const EdgeInsets.all(8),
-                            icon: const Icon(
-                              Icons.shopping_cart_outlined,
-                              size: 21,
-                              color: Colors.white,
                             ),
                           ),
                           IconButton(

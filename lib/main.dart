@@ -15,7 +15,6 @@ import 'screens/auth/auth_gate_page.dart';
 import 'screens/auth/forgot_password_page.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/booking/booking_page.dart';
-import 'screens/cart/cart_page.dart';
 import 'screens/departments/department_list_page.dart';
 import 'screens/doctors/detail/doctor_detail_page.dart';
 import 'screens/doctors/search/doctor_search_page.dart';
@@ -43,7 +42,7 @@ class MyApp extends StatelessWidget {
         '/login': (_) => const LoginPage(),
         '/forgot-password': (_) => const ForgotPasswordPage(),
         '/home': (_) => const HomePage(),
-        '/cart': (_) => const CartPage(),
+        '/patient-profiles': (_) => const PatientProfilesPage(),
         '/booking/patient': (_) => const PatientProfilesPage(forBooking: true),
         '/departments': (context) {
           final patient = ModalRoute.of(context)?.settings.arguments;

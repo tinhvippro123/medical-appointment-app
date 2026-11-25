@@ -7,6 +7,7 @@ import 'package:medical_appointment_app/screens/home/function_order_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medical_appointment_app/main.dart';
 import 'package:medical_appointment_app/screens/account/account_page.dart';
+import 'package:medical_appointment_app/screens/booking/order_history_page.dart';
 import 'package:medical_appointment_app/screens/home/home_page.dart';
 import 'package:medical_appointment_app/screens/home/widgets/home_header.dart';
 
@@ -17,11 +18,14 @@ void main() {
   ) async {
     await tester.pumpWidget(const MyApp(home: HomePage()));
     await tester.pumpAndSettle();
-    for (final index in [0, 1, 3]) {
+    for (final index in [0, 3]) {
       await tester.tap(find.byKey(ValueKey('bottom-nav-$index')));
       await tester.pumpAndSettle();
       expect(find.byType(FeatureMessage).hitTestable(), findsOneWidget);
     }
+    await tester.tap(find.byKey(const ValueKey('bottom-nav-1')));
+    await tester.pumpAndSettle();
+    expect(find.byType(OrderHistoryPage).hitTestable(), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('bottom-nav-4')));
     await tester.pumpAndSettle();
     expect(find.byType(AccountPage).hitTestable(), findsOneWidget);

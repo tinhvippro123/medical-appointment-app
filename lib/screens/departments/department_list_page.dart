@@ -4,7 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/department.dart';
 import '../../models/patient_profile.dart';
 import '../../repositories/department_repository.dart';
-import '../doctors/search/doctor_search_page.dart';
+import '../booking/booking_date_page.dart';
 
 class DepartmentListPage extends StatefulWidget {
   const DepartmentListPage({super.key, this.repository, this.patient});
@@ -29,8 +29,7 @@ class _DepartmentListPageState extends State<DepartmentListPage> {
     }
     navigator.push(
       MaterialPageRoute(
-        builder: (_) => DoctorSearchPage(
-          browse: true,
+        builder: (_) => BookingDatePage(
           department: department,
           patient: patient,
         ),

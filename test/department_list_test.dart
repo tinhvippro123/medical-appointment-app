@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:medical_appointment_app/core/network/api_client.dart';
 import 'package:medical_appointment_app/models/department.dart';
+import 'package:medical_appointment_app/models/patient_profile.dart';
 import 'package:medical_appointment_app/repositories/department_repository.dart';
 import 'package:medical_appointment_app/repositories/doctor_repository.dart';
 import 'package:medical_appointment_app/screens/departments/department_list_page.dart';
@@ -75,5 +76,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(requests.last.queryParameters['keyword'], 'An');
     expect(requests.last.queryParameters['departmentId'], '7');
+  });
+
+  testWidgets('Đặt khám từ chuyên khoa mở lịch trước khi chọn bác sĩ', (
+    tester,
+  ) async {
+    final client = MockClient(
+      (_) async => http.Response.bytes(
+        utf8.encode('[{"id":7,"name":"Nhi khoa"}]'),
+        200,
+      ),
+    );
+    addTearDown(client.close);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DepartmentListPage(
+          repository: DepartmentRepository(
+            client: client,
+            baseUrl: 'http://test.api',
+            token: () async => null,
+          ),
+          patient: const PatientProfile(
+            id: 1,
+            fullName: 'Trần Bé Bình',
+            relationship: 'Con',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nhi khoa'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Chọn ngày khám'), findsOneWidget);
+    expect(find.text('Trần Bé Bình (Con)'), findsOneWidget);
+    expect(find.byType(CalendarDatePicker), findsOneWidget);
+    expect(find.text('Chọn bác sĩ'), findsOneWidget);
+    expect(find.byType(DoctorSearchPage), findsNothing);
   });
 }

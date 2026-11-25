@@ -105,16 +105,12 @@ class _PatientProfilesPageState extends State<PatientProfilesPage> {
             leading: const Icon(Icons.person_outline),
             title: Text(profile.label),
             selected: widget.forBooking && _selected?.id == profile.id,
-            trailing: _selected?.id == profile.id
+            trailing: widget.forBooking && _selected?.id == profile.id
                 ? const Icon(Icons.check)
-                : const Icon(Icons.chevron_right),
-            onTap: () {
-              if (widget.forBooking) {
-                setState(() => _selected = profile);
-              } else {
-                Navigator.pop(context, profile);
-              }
-            },
+                : null,
+            onTap: widget.forBooking
+                ? () => setState(() => _selected = profile)
+                : null,
           ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
