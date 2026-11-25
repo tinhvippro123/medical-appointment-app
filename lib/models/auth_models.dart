@@ -11,18 +11,48 @@ class RegisterRequest {
   final String fullName;
   final String phone;
   final String password;
+  final String? email;
 
   RegisterRequest({
     required this.fullName,
     required this.phone,
     required this.password,
+    this.email,
   });
 
-  Map<String, dynamic> toJson() => {
-    'fullName': fullName,
-    'phone': phone,
-    'password': password,
-  };
+  Map<String, dynamic> toJson() {
+    final trimmedEmail = email?.trim();
+    return {
+      'fullName': fullName,
+      'phone': phone,
+      'password': password,
+      if (trimmedEmail != null && trimmedEmail.isNotEmpty)
+        'email': trimmedEmail,
+    };
+  }
+}
+
+class RegisterResult {
+  final String message;
+  final bool requiresEmailVerification;
+  final String? email;
+  final String? devOtp;
+
+  const RegisterResult({
+    required this.message,
+    this.requiresEmailVerification = false,
+    this.email,
+    this.devOtp,
+  });
+}
+
+class VerifyEmailRequest {
+  final String email;
+  final String otp;
+
+  const VerifyEmailRequest({required this.email, required this.otp});
+
+  Map<String, dynamic> toJson() => {'email': email, 'otp': otp};
 }
 
 class ChangePasswordRequest {

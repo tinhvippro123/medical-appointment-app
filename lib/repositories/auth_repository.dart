@@ -57,7 +57,7 @@ class AuthRepository {
     }
   }
 
-  Future<void> registerRequest(RegisterRequest request) async {
+  Future<RegisterResult> registerRequest(RegisterRequest request) async {
     try {
       final response = await _client
           .post(
@@ -67,11 +67,25 @@ class AuthRepository {
           )
           .timeout(const Duration(seconds: 20));
 
+      final data = _tryDecode(response.bodyBytes);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return;
+        if (data is Map) {
+          final msg = (data['message'] ?? data['Message'])?.toString() ??
+              'Đăng ký tài khoản thành công.';
+          final requiresVerify = data['requiresEmailVerification'] == true;
+          final email = data['email'] is String ? data['email'] as String : null;
+          final devOtp =
+              data['devOtp'] is String ? data['devOtp'] as String : null;
+          return RegisterResult(
+            message: msg,
+            requiresEmailVerification: requiresVerify,
+            email: email,
+            devOtp: devOtp,
+          );
+        }
+        return const RegisterResult(message: 'Đăng ký tài khoản thành công.');
       }
 
-      final data = _tryDecode(response.bodyBytes);
       throw ApiException(
         parseApiErrorMessage(
           data,
@@ -234,6 +248,84 @@ class AuthRepository {
     }
   }
 
+  Future<void> verifyEmailRequest(VerifyEmailRequest request) async {
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('$baseUrl/api/auth/verify-email'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(request.toJson()),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+
+      final data = _tryDecode(response.bodyBytes);
+      throw ApiException(
+        parseApiErrorMessage(
+          data,
+          response.statusCode,
+          fallback: 'Xác thực email không thành công.',
+        ),
+        errorCode: data is Map ? data['errorCode'] as String? : null,
+        statusCode: response.statusCode,
+      );
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw const ApiException('Kết nối quá thời gian. Vui lòng thử lại.');
+    } catch (_) {
+      throw const ApiException(
+        'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.',
+      );
+    }
+  }
+
+  Future<ForgotPasswordResult> resendVerificationOtpRequest(
+    String email,
+  ) async {
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('$baseUrl/api/auth/resend-verify-email'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email.trim()}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      final data = _tryDecode(response.bodyBytes);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final msg = data is Map && data['message'] is String
+            ? data['message'] as String
+            : 'Đã gửi lại mã OTP xác thực tới email của bạn.';
+        final devOtp = data is Map && data['devOtp'] is String
+            ? data['devOtp'] as String
+            : null;
+        return ForgotPasswordResult(message: msg, devOtp: devOtp);
+      }
+
+      throw ApiException(
+        parseApiErrorMessage(
+          data,
+          response.statusCode,
+          fallback: 'Không thể gửi lại mã OTP lúc này.',
+        ),
+        errorCode: data is Map ? data['errorCode'] as String? : null,
+        statusCode: response.statusCode,
+      );
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw const ApiException('Kết nối quá thời gian. Vui lòng thử lại.');
+    } catch (_) {
+      throw const ApiException(
+        'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.',
+      );
+    }
+  }
+
   dynamic _tryDecode(List<int> bodyBytes) {
     if (bodyBytes.isEmpty) {
       return null;
@@ -248,7 +340,7 @@ class AuthRepository {
   static Future<SessionUser?> login(LoginRequest request) =>
       AuthRepository().loginRequest(request);
 
-  static Future<void> register(RegisterRequest request) =>
+  static Future<RegisterResult> register(RegisterRequest request) =>
       AuthRepository().registerRequest(request);
 
   static Future<void> changePassword(ChangePasswordRequest request) =>

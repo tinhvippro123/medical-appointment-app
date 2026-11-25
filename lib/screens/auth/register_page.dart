@@ -4,6 +4,7 @@ import '../../core/widgets/community_logo.dart';
 import '../../helpers/form_validators.dart';
 import '../../models/auth_models.dart';
 import '../../repositories/auth_repository.dart';
+import 'verify_email_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key, this.authRepository});
@@ -17,6 +18,7 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -29,6 +31,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -43,38 +46,72 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = true);
 
     try {
+      final emailText = _emailController.text.trim();
       final request = RegisterRequest(
         fullName: _nameController.text.trim(),
         phone: _phoneController.text.trim(),
+        email: emailText,
         password: _passwordController.text,
       );
 
-      await _authRepo.registerRequest(request);
+      final result = await _authRepo.registerRequest(request);
 
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đăng ký tài khoản thành công! Hãy đăng nhập.'),
-          backgroundColor: Color(0xff10b981),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (result.requiresEmailVerification) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: const Color(0xff10b981),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+
+        final verified = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VerifyEmailPage(
+              email: result.email ?? emailText,
+              initialDevOtp: result.devOtp,
+              authRepository: _authRepo,
+            ),
+          ),
+        );
+
+        if (verified == true && mounted) {
+          Navigator.pop(context);
+        }
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Đăng ký tài khoản thành công! Hãy đăng nhập.'),
+            backgroundColor: Color(0xff10b981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
 
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$e'),
-          backgroundColor: const Color(0xffef4444),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('$e'),
+            backgroundColor: const Color(0xffef4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -175,6 +212,40 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                   validator: FormValidators.validateFullName,
+                ),
+                const SizedBox(height: 16),
+
+                // Địa chỉ Email
+                TextFormField(
+                  key: const ValueKey('register-email-field'),
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Địa chỉ Email',
+                    hintText: 'Ví dụ: benhnhan@gmail.com',
+                    prefixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: AppColors.primary,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xfff8fafc),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: Colors.grey.shade200),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.8,
+                      ),
+                    ),
+                  ),
+                  validator: FormValidators.validateRequiredEmail,
                 ),
                 const SizedBox(height: 16),
 
