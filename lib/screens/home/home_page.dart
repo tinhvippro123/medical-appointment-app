@@ -116,10 +116,14 @@ class _HomePageState extends State<HomePage>
                 children: [
                   RevealContent(
                     child: HealthcareFunctionsPanel(
-                      onSelected: (service) => open(
-                        service.title.replaceAll('\n', ' '),
-                        service.icon,
-                      ),
+                      onSelected: (service) {
+                        final title = service.title.replaceAll('\n', ' ');
+                        if (title == 'Đặt khám') {
+                          Navigator.of(context).pushNamed('/departments');
+                        } else {
+                          open(title, service.icon);
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(height: 20),

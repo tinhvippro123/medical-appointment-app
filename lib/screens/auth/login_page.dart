@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/community_logo.dart';
 import '../../helpers/form_validators.dart';
+import '../../helpers/session_helper.dart';
 import '../../models/auth_models.dart';
 import '../../repositories/auth_repository.dart';
 import '../admin/admin_dashboard_page.dart';
@@ -47,20 +48,25 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       final user = await _authRepo.loginRequest(request);
+      final isAdmin = user?.isAdmin ?? await SessionHepler.isAdmin();
 
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đăng nhập thành công! Chào mừng bạn.'),
-          backgroundColor: Color(0xff10b981),
+        SnackBar(
+          content: Text(
+            isAdmin
+                ? 'Đăng nhập thành công! Chào mừng Quản trị viên.'
+                : 'Đăng nhập thành công! Chào mừng bạn.',
+          ),
+          backgroundColor: const Color(0xff10b981),
           behavior: SnackBarBehavior.floating,
         ),
       );
 
-      final destination = user?.isAdmin == true
+      final destination = isAdmin
           ? AdminDashboardPage(currentUser: user, authRepository: _authRepo)
           : const HomePage();
 
