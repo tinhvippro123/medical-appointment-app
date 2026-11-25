@@ -1031,7 +1031,10 @@ void main() {
       await tester.tap(payment);
       await tester.pumpAndSettle();
       expect(find.text('Có'), findsOneWidget);
-      expect(find.textContaining('Thanh toán trực tuyến chưa khả dụng.'), findsOneWidget);
+      expect(
+        find.textContaining('Thanh toán trực tiếp tại quầy tiếp nhận'),
+        findsOneWidget,
+      );
 
       await tester.pageBack();
       await tester.pumpAndSettle();

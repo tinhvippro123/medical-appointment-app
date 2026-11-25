@@ -166,10 +166,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
-                    'Thanh toán trực tuyến chưa khả dụng. Đơn được tạo ở trạng thái chưa thanh toán.',
+                    _paymentMethod == 'Cash'
+                        ? 'Thanh toán trực tiếp tại quầy tiếp nhận khi đến khám.'
+                        : 'Sau khi xác nhận đặt lịch, bạn có thể quét mã VietQR hoặc thanh toán qua cổng VNPay ngay trên phiếu khám.',
                   ),
                 ),
               ],
