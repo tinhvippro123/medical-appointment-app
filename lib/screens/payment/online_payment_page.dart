@@ -410,10 +410,10 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
         : const Color(0xffef4444);
 
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
