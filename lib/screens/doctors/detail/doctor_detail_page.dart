@@ -3,8 +3,10 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../helpers/session_helper.dart';
 import '../../../models/doctor.dart';
+import '../../../models/patient_profile.dart';
 import '../../../repositories/doctor_repository.dart';
 import '../../auth/login_page.dart';
+import '../../booking/booking_page.dart';
 import 'widgets/related_doctor_card.dart';
 
 /// Màn hình Chi tiết bác sĩ + Bác sĩ liên quan
@@ -13,10 +15,12 @@ class DoctorDetailPage extends StatefulWidget {
     super.key,
     this.doctorId,
     this.repository,
+    this.patient,
   });
 
   final int? doctorId;
   final DoctorRepository? repository;
+  final PatientProfile? patient;
 
   @override
   State<DoctorDetailPage> createState() => _DoctorDetailPageState();
@@ -158,7 +162,16 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     }
 
     try {
-      await Navigator.pushNamed(context, '/booking', arguments: _doctor!.id);
+      final navigator = Navigator.of(context);
+      final patient = widget.patient;
+      if (patient == null) {
+        await navigator.pushNamed('/booking', arguments: _doctor!.id);
+      } else {
+        final doctorId = _doctor!.id;
+        await navigator.push(MaterialPageRoute(builder: (_) => BookingPage(
+          doctorId: doctorId, patient: patient,
+        )));
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -629,11 +642,15 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
                   doctor: rel,
                   imageUrl: _repository.imageUrl(rel.avatarUrl),
                   onTap: () {
-                    Navigator.pushReplacementNamed(
-                      context,
-                      '/doctors/detail',
-                      arguments: rel.id,
-                    );
+                    final navigator = Navigator.of(context);
+                    final patient = widget.patient;
+                    if (patient == null) {
+                      navigator.pushReplacementNamed('/doctors/detail', arguments: rel.id);
+                    } else {
+                      navigator.pushReplacement(MaterialPageRoute(builder: (_) => DoctorDetailPage(
+                        doctorId: rel.id, patient: patient,
+                      )));
+                    }
                   },
                 );
               },

@@ -4,7 +4,9 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/doctor.dart';
 import '../../../models/department.dart';
+import '../../../models/patient_profile.dart';
 import '../../../repositories/doctor_repository.dart';
+import '../detail/doctor_detail_page.dart';
 import 'widgets/doctor_search_card.dart';
 
 /// Màn hình tìm kiếm bác sĩ theo tên dành cho bệnh nhân
@@ -15,12 +17,14 @@ class DoctorSearchPage extends StatefulWidget {
     this.initialKeyword,
     this.department,
     this.browse = false,
+    this.patient,
   });
 
   final DoctorRepository? repository;
   final String? initialKeyword;
   final Department? department;
   final bool browse;
+  final PatientProfile? patient;
 
   @override
   State<DoctorSearchPage> createState() => _DoctorSearchPageState();
@@ -187,7 +191,15 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
   }
 
   void _navigateToDetail(int doctorId) {
-    Navigator.pushNamed(context, '/doctors/detail', arguments: doctorId);
+    final navigator = Navigator.of(context);
+    final patient = widget.patient;
+    if (patient == null) {
+      navigator.pushNamed('/doctors/detail', arguments: doctorId);
+      return;
+    }
+    navigator.push(MaterialPageRoute(builder: (_) => DoctorDetailPage(
+      doctorId: doctorId, patient: patient,
+    )));
   }
 
   @override

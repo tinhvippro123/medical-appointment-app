@@ -7,34 +7,96 @@ import '../../repositories/patient_profile_repository.dart';
 class PatientProfilesPage extends StatefulWidget {
   const PatientProfilesPage({
     super.key,
-    required this.repository,
-    required this.profiles,
+    this.repository,
+    this.profiles,
+    this.forBooking = false,
   });
 
-  final PatientProfileRepository repository;
-  final List<PatientProfile> profiles;
+  final PatientProfileRepository? repository;
+  final List<PatientProfile>? profiles;
+  final bool forBooking;
 
   @override
   State<PatientProfilesPage> createState() => _PatientProfilesPageState();
 }
 
 class _PatientProfilesPageState extends State<PatientProfilesPage> {
-  late final _profiles = List<PatientProfile>.of(widget.profiles);
+  late final _repository = widget.repository ?? PatientProfileRepository();
+  late List<PatientProfile> _profiles = List.of(widget.profiles ?? []);
+  PatientProfile? _selected;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.profiles == null) _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final profiles = await _repository.list();
+      if (!mounted) return;
+      setState(() {
+        _profiles = profiles;
+        for (final profile in profiles) {
+          if (profile.relationship.trim().toLowerCase() == 'bản thân') {
+            _selected = profile;
+            break;
+          }
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error is ApiException
+            ? error.displayMessage
+            : 'Không tải được hồ sơ bệnh nhân.';
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   Future<void> _addProfile() async {
     final profile = await Navigator.of(context).push<PatientProfile>(
       MaterialPageRoute(
-        builder: (_) => _NewProfilePage(repository: widget.repository),
+        builder: (_) => _NewProfilePage(repository: _repository),
       ),
     );
     if (!mounted || profile == null) return;
-    setState(() => _profiles.add(profile));
+    setState(() {
+      _profiles.add(profile);
+      if (widget.forBooking) _selected = profile;
+    });
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Quản lý hồ sơ')),
-    body: ListView(
+    appBar: AppBar(
+      title: Text(widget.forBooking ? 'Chọn hồ sơ' : 'Quản lý hồ sơ'),
+    ),
+    body: _buildBody(),
+  );
+
+  Widget _buildBody() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error!, textAlign: TextAlign.center),
+            TextButton(onPressed: _load, child: const Text('Thử lại')),
+          ],
+        ),
+      );
+    }
+    return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         if (_profiles.isEmpty) const Text('Bạn chưa có hồ sơ bệnh nhân.'),
@@ -42,8 +104,17 @@ class _PatientProfilesPageState extends State<PatientProfilesPage> {
           ListTile(
             leading: const Icon(Icons.person_outline),
             title: Text(profile.label),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.pop(context, profile),
+            selected: widget.forBooking && _selected?.id == profile.id,
+            trailing: _selected?.id == profile.id
+                ? const Icon(Icons.check)
+                : const Icon(Icons.chevron_right),
+            onTap: () {
+              if (widget.forBooking) {
+                setState(() => _selected = profile);
+              } else {
+                Navigator.pop(context, profile);
+              }
+            },
           ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
@@ -51,9 +122,20 @@ class _PatientProfilesPageState extends State<PatientProfilesPage> {
           icon: const Icon(Icons.person_add_outlined),
           label: const Text('Thêm hồ sơ mới'),
         ),
+        if (widget.forBooking) ...[
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: _selected == null
+                ? null
+                : () => Navigator.of(
+                    context,
+                  ).pushNamed('/departments', arguments: _selected),
+            child: const Text('Tiếp tục'),
+          ),
+        ],
       ],
-    ),
-  );
+    );
+  }
 }
 
 class _NewProfilePage extends StatefulWidget {

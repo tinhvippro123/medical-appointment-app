@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../models/department.dart';
+import '../../models/patient_profile.dart';
 import '../../repositories/department_repository.dart';
+import '../doctors/search/doctor_search_page.dart';
 
 class DepartmentListPage extends StatefulWidget {
-  const DepartmentListPage({super.key, this.repository});
+  const DepartmentListPage({super.key, this.repository, this.patient});
 
   final DepartmentRepository? repository;
+  final PatientProfile? patient;
 
   @override
   State<DepartmentListPage> createState() => _DepartmentListPageState();
@@ -16,6 +19,24 @@ class DepartmentListPage extends StatefulWidget {
 class _DepartmentListPageState extends State<DepartmentListPage> {
   late final _repository = widget.repository ?? DepartmentRepository();
   late Future<List<Department>> _departments = _repository.list();
+
+  void _openDepartment(Department department) {
+    final navigator = Navigator.of(context);
+    final patient = widget.patient;
+    if (patient == null) {
+      navigator.pushNamed('/doctors', arguments: department);
+      return;
+    }
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => DoctorSearchPage(
+          browse: true,
+          department: department,
+          patient: patient,
+        ),
+      ),
+    );
+  }
 
   Future<void> _reload() async {
     final request = _repository.list();
@@ -90,9 +111,7 @@ class _DepartmentListPageState extends State<DepartmentListPage> {
                   return _DepartmentCard(
                     name: department.name,
                     imageUrl: _repository.imageUrl(department.imageUrl),
-                    onTap: () => Navigator.of(
-                      context,
-                    ).pushNamed('/doctors', arguments: department),
+                    onTap: () => _openDepartment(department),
                   );
                 },
               ),

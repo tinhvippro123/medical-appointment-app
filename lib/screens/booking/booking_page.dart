@@ -12,11 +12,13 @@ class BookingPage extends StatefulWidget {
     required this.doctorId,
     this.cartRepository,
     this.profileRepository,
+    this.patient,
   });
 
   final int? doctorId;
   final CartRepository? cartRepository;
   final PatientProfileRepository? profileRepository;
+  final PatientProfile? patient;
 
   @override
   State<BookingPage> createState() => _BookingPageState();
@@ -28,7 +30,7 @@ class _BookingPageState extends State<BookingPage> {
       widget.profileRepository ?? PatientProfileRepository();
   List<Schedule> _schedules = [];
   List<PatientProfile> _profiles = [];
-  PatientProfile? _patient;
+  late PatientProfile? _patient = widget.patient;
   late DateTime _date = _today();
   String? _slot;
   String? _loadError;
@@ -57,6 +59,11 @@ class _BookingPageState extends State<BookingPage> {
     });
     try {
       final schedules = await _cart.schedules(widget.doctorId!);
+      if (!mounted) return;
+      if (widget.patient != null) {
+        setState(() => _schedules = schedules);
+        return;
+      }
       final profiles = await _profileRepository.list();
       if (!mounted) return;
       setState(() {
@@ -270,8 +277,10 @@ class _BookingPageState extends State<BookingPage> {
                 leading: const Icon(Icons.person_outline),
                 title: const Text('Đặt cho ai?'),
                 subtitle: Text(_patient?.label ?? 'Chọn hồ sơ bệnh nhân'),
-                trailing: const Icon(Icons.expand_more),
-                onTap: _saving ? null : _pickPatient,
+                trailing: widget.patient == null
+                    ? const Icon(Icons.expand_more)
+                    : null,
+                onTap: _saving || widget.patient != null ? null : _pickPatient,
               ),
             ),
             const SizedBox(height: 20),
