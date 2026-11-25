@@ -8,8 +8,10 @@ import 'package:medical_appointment_app/core/network/api_client.dart';
 import 'package:medical_appointment_app/models/doctor.dart';
 import 'package:medical_appointment_app/models/patient_profile.dart';
 import 'package:medical_appointment_app/repositories/order_repository.dart';
+import 'package:medical_appointment_app/repositories/payment_repository.dart';
 import 'package:medical_appointment_app/screens/booking/checkout_page.dart';
 import 'package:medical_appointment_app/screens/booking/order_history_page.dart';
+import 'package:medical_appointment_app/screens/payment/online_payment_page.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 void main() {
@@ -45,8 +47,32 @@ void main() {
       requests.add(request);
       final data = switch (request.url.path) {
         '/api/orders/checkout' || '/api/orders/9' => detail,
+        '/api/payments/vietqr' => {
+          'orderId': 9,
+          'amount': 150000,
+          'txnRef': 'VQR9_20261125',
+          'bankId': 'MB',
+          'bankName': 'Ngân hàng TMCP Quân Đội (MB Bank)',
+          'accountNo': '0987654321',
+          'accountName': 'TRUNG TAM Y TE HIEP PHUOC',
+          'transferContent': 'YTEHP DH9',
+          'qrData': 'VIETQR|BANK=MB|ACC=0987654321|AMOUNT=150000',
+          'vietQrImageUrl':
+              'https://img.vietqr.io/image/MB-0987654321-compact2.png',
+        },
+        '/api/payments/confirm' => {
+          'success': true,
+          'orderId': 9,
+          'paymentMethod': 'VietQR',
+          'paymentStatus': 'Paid',
+          'transactionId': 'VQR9_PAID',
+          'responseCode': '00',
+          'message': 'Thanh toán VietQR thành công!',
+        },
         '/api/orders' => {
-          'items': [order],
+          'items': [
+            {...order, 'paymentStatus': 'Paid'},
+          ],
           'totalCount': 1,
           'page': 1,
           'pageSize': 10,
@@ -56,13 +82,13 @@ void main() {
       return http.Response.bytes(utf8.encode(jsonEncode(data)), 200);
     });
     addTearDown(client.close);
-    final repo = OrderRepository(
-      apiClient: ApiClient(
-        client: client,
-        baseUrl: 'http://test.api',
-        tokenProvider: () async => 'test-token',
-      ),
+    final apiClient = ApiClient(
+      client: client,
+      baseUrl: 'http://test.api',
+      tokenProvider: () async => 'test-token',
     );
+    final repo = OrderRepository(apiClient: apiClient);
+    final paymentRepo = PaymentRepository(apiClient: apiClient);
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
@@ -92,6 +118,7 @@ void main() {
                         note: '',
                         hasHealthInsurance: false,
                         repository: repo,
+                        paymentRepository: paymentRepo,
                       ),
                     ),
                   ),
@@ -121,8 +148,8 @@ void main() {
     await tester.ensureVisible(confirm);
     await tester.tap(confirm);
     await tester.pumpAndSettle();
-    expect(requests.single.method, 'POST');
-    expect(jsonDecode(requests.single.body), {
+    expect(requests.first.method, 'POST');
+    expect(jsonDecode(requests.first.body), {
       'paymentMethod': 'VietQR',
       'appointment': {
         'doctorId': 15,
@@ -131,9 +158,27 @@ void main() {
         'timeSlot': '09:00-10:00',
       },
     });
+
+    // Mở thẳng màn hình quét mã VietQR ngay khi bấm Xác nhận đặt lịch
+    expect(find.byType(OnlinePaymentPage), findsOneWidget);
+    expect(find.text('YTEHP DH9'), findsOneWidget);
+    final payConfirmBtn = find.byKey(
+      const ValueKey('payment-confirm-success-btn'),
+    );
+    await tester.ensureVisible(payConfirmBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(payConfirmBtn);
+    await tester.pumpAndSettle();
+    expect(find.text('Thanh toán thành công!'), findsOneWidget);
+    final doneReturnBtn = find.byKey(const ValueKey('payment-done-return-btn'));
+    await tester.ensureVisible(doneReturnBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(doneReturnBtn);
+    await tester.pumpAndSettle();
+
     expect(find.text('Đặt lịch thành công!'), findsOneWidget);
     expect(find.text('Phòng P402'), findsOneWidget);
-    expect(find.text('VietQR · Chưa thanh toán'), findsOneWidget);
+    expect(find.text('VietQR · Đã thanh toán'), findsOneWidget);
 
     await tester.tap(find.text('Về trang chủ'));
     await tester.pumpAndSettle();
@@ -150,6 +195,8 @@ void main() {
     );
     expect(requests.map((r) => r.url.path), [
       '/api/orders/checkout',
+      '/api/payments/vietqr',
+      '/api/payments/confirm',
       '/api/orders',
       '/api/orders/9',
     ]);

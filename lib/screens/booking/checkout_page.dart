@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/network/api_exception.dart';
 import '../../models/doctor.dart';
 import '../../models/patient_profile.dart';
+import '../../models/payment_models.dart';
 import '../../repositories/order_repository.dart';
+import '../../repositories/payment_repository.dart';
+import '../payment/online_payment_page.dart';
 import 'booking_logic.dart';
 import 'order_history_page.dart';
 
@@ -17,6 +20,7 @@ class CheckoutPage extends StatefulWidget {
     required this.note,
     required this.hasHealthInsurance,
     this.repository,
+    this.paymentRepository,
   });
 
   final Doctor doctor;
@@ -26,6 +30,7 @@ class CheckoutPage extends StatefulWidget {
   final String note;
   final bool hasHealthInsurance;
   final OrderRepository? repository;
+  final PaymentRepository? paymentRepository;
 
   @override
   State<CheckoutPage> createState() => _CheckoutPageState();
@@ -49,13 +54,35 @@ class _CheckoutPageState extends State<CheckoutPage> {
         paymentMethod: _paymentMethod,
       );
       if (!mounted) return;
+      var finalOrder = order;
+      if (_paymentMethod == 'VietQR' || _paymentMethod == 'VNPay') {
+        final paymentResult = await Navigator.of(context).push<PaymentResult>(
+          MaterialPageRoute(
+            builder: (_) => OnlinePaymentPage(
+              order: order,
+              initialMethod: _paymentMethod,
+              repository: widget.paymentRepository,
+            ),
+          ),
+        );
+        if (!mounted) return;
+        if (paymentResult != null && paymentResult.success) {
+          finalOrder = order.copyWith(
+            paymentMethod: paymentResult.paymentMethod,
+            paymentStatus: paymentResult.paymentStatus,
+            transactionId: paymentResult.transactionId,
+          );
+        }
+      }
+
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => Scaffold(
             appBar: AppBar(title: const Text('Đặt lịch thành công!')),
             body: SafeArea(
               child: OrderInfo(
-                order: order,
+                order: finalOrder,
+                paymentRepository: widget.paymentRepository,
                 action: FilledButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Về trang chủ'),
@@ -166,10 +193,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
-                    'Thanh toán trực tuyến chưa khả dụng. Đơn được tạo ở trạng thái chưa thanh toán.',
+                    _paymentMethod == 'Cash'
+                        ? 'Thanh toán trực tiếp tại quầy tiếp nhận khi đến khám.'
+                        : 'Sau khi bấm xác nhận, màn hình thanh toán $_paymentMethod sẽ mở ngay để bạn hoàn tất giao dịch.',
                   ),
                 ),
               ],

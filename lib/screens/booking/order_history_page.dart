@@ -3,8 +3,11 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/order.dart';
 import '../../models/paged_result.dart';
+import '../../models/payment_models.dart';
 import '../../repositories/order_repository.dart';
+import '../../repositories/payment_repository.dart';
 import '../admin/orders/widgets/order_status_chip.dart';
+import '../payment/online_payment_page.dart';
 
 class OrderHistoryPage extends StatefulWidget {
   const OrderHistoryPage({super.key, this.repository});
@@ -141,61 +144,146 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
 }
 
 /// Dùng chung cho kết quả checkout và chi tiết trong lịch sử khám.
-class OrderInfo extends StatelessWidget {
-  const OrderInfo({super.key, required this.order, this.action});
+class OrderInfo extends StatefulWidget {
+  const OrderInfo({
+    super.key,
+    required this.order,
+    this.action,
+    this.paymentRepository,
+  });
 
   final Order order;
   final Widget? action;
+  final PaymentRepository? paymentRepository;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 680),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            color: Colors.white,
-            child: ListTile(
-              title: Text('Đơn #${order.id} · ${order.totalAmountFormatted}'),
-              subtitle: Text(
-                '${order.paymentMethodLabel} · ${order.paymentStatusLabel}',
-              ),
-              trailing: OrderStatusChip(status: order.status, compact: true),
-            ),
-          ),
-          for (final item in order.orderDetails)
+  State<OrderInfo> createState() => _OrderInfoState();
+}
+
+class _OrderInfoState extends State<OrderInfo> {
+  late Order _order = widget.order;
+
+  @override
+  void didUpdateWidget(covariant OrderInfo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.order != widget.order) {
+      _order = widget.order;
+    }
+  }
+
+  Future<void> _openOnlinePayment() async {
+    final result = await Navigator.of(context).push<PaymentResult>(
+      MaterialPageRoute(
+        builder: (_) => OnlinePaymentPage(
+          order: _order,
+          initialMethod: _order.paymentMethod,
+          repository: widget.paymentRepository,
+        ),
+      ),
+    );
+
+    if (result != null && result.success && mounted) {
+      setState(() {
+        _order = _order.copyWith(
+          paymentMethod: result.paymentMethod,
+          paymentStatus: result.paymentStatus,
+          transactionId: result.transactionId,
+        );
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canPayOnline =
+        !_order.isPaid && _order.status != OrderStatus.cancelled;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
             Card(
               color: Colors.white,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'STT #${item.queueNumber} · ${item.doctorFullName}',
-                      style: Theme.of(context).textTheme.titleMedium,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListTile(
+                    title: Text(
+                      'Đơn #${_order.id} · ${_order.totalAmountFormatted}',
                     ),
-                    const SizedBox(height: 8),
-                    Text(item.roomDisplay),
-                    Text('${item.appointmentDateFormatted} · ${item.timeSlot}'),
-                    Text('Người khám: ${item.patientProfileFullName}'),
-                    Text('Phí khám: ${item.feeFormatted}'),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: () => _showTicketQr(context, item.id),
-                      icon: const Icon(Icons.qr_code_2),
-                      label: const Text('Mã QR'),
+                    subtitle: Text(
+                      '${_order.paymentMethodLabel} · ${_order.paymentStatusLabel}',
                     ),
-                  ],
-                ),
+                    trailing: OrderStatusChip(
+                      status: _order.status,
+                      compact: true,
+                    ),
+                  ),
+                  if (_order.isPaid &&
+                      _order.transactionId != null &&
+                      _order.transactionId!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Text(
+                        'Mã giao dịch: ${_order.transactionId}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xff059669),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  if (canPayOnline)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      child: FilledButton.tonalIcon(
+                        key: const ValueKey('open-online-payment-btn'),
+                        onPressed: _openOnlinePayment,
+                        icon: const Icon(Icons.payment_rounded, size: 19),
+                        label: const Text('Thanh toán trực tuyến (VietQR / VNPay)'),
+                      ),
+                    ),
+                ],
               ),
             ),
-          if (action != null) ...[const SizedBox(height: 12), action!],
-        ],
+            for (final item in _order.orderDetails)
+              Card(
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'STT #${item.queueNumber} · ${item.doctorFullName}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(item.roomDisplay),
+                      Text('${item.appointmentDateFormatted} · ${item.timeSlot}'),
+                      Text('Người khám: ${item.patientProfileFullName}'),
+                      Text('Phí khám: ${item.feeFormatted}'),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => _showTicketQr(context, item.id),
+                        icon: const Icon(Icons.qr_code_2),
+                        label: const Text('Mã QR'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (widget.action != null) ...[
+              const SizedBox(height: 12),
+              widget.action!,
+            ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   void _showTicketQr(BuildContext context, int id) {
     final code = 'TICKET-$id';
