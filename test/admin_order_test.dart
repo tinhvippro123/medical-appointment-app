@@ -1200,4 +1200,330 @@ void main() {
       expect(find.byType(AdminOrderPage), findsOneWidget);
     });
   });
+
+  group('7. Tìm kiếm theo từ khóa & Lọc theo khoảng ngày (Card A13)', () {
+    test(
+      'AdminOrderRepository.getOrders truyền đúng keyword, fromDate, toDate và bỏ qua từ khóa rỗng',
+      () async {
+        final capturedUris = <Uri>[];
+        final mockClient = MockClient((request) async {
+          capturedUris.add(request.url);
+          return jsonResponse({
+            'items': [
+              sampleOrderJson(id: 25, userFullName: 'Lê Thanh Tính'),
+            ],
+            'totalCount': 1,
+            'page': 1,
+            'pageSize': 10,
+            'totalPages': 1,
+            'hasPreviousPage': false,
+            'hasNextPage': false,
+          });
+        });
+
+        final repo = AdminOrderRepository(
+          apiClient: ApiClient(
+            client: mockClient,
+            baseUrl: 'http://test.api',
+            tokenProvider: () async => 'admin_jwt',
+          ),
+        );
+
+        await repo.getOrders(
+          page: 1,
+          pageSize: 10,
+          status: 'Confirmed',
+          keyword: '  0987654321  ',
+          fromDate: DateTime(2026, 11, 1),
+          toDate: DateTime(2026, 11, 25),
+        );
+
+        expect(capturedUris.last.queryParameters, {
+          'page': '1',
+          'pageSize': '10',
+          'status': 'Confirmed',
+          'keyword': '0987654321',
+          'fromDate': '2026-11-01',
+          'toDate': '2026-11-25',
+        });
+
+        await repo.getOrders(
+          page: 1,
+          pageSize: 10,
+          keyword: '   ',
+        );
+
+        expect(capturedUris.last.queryParameters, {
+          'page': '1',
+          'pageSize': '10',
+        });
+      },
+    );
+
+    testWidgets(
+      'AdminOrderPage tìm kiếm theo từ khóa (tên/SĐT/#mã) và xóa từ khóa tải lại danh sách',
+      (tester) async {
+        configureScreenSize(tester);
+        final requests = <Uri>[];
+
+        final mockClient = MockClient((request) async {
+          requests.add(request.url);
+          final kw = request.url.queryParameters['keyword'];
+          if (kw == '#15') {
+            return jsonResponse({
+              'items': [
+                sampleOrderJson(
+                  id: 15,
+                  userFullName: 'Nguyễn Thị Mai',
+                  status: 'Confirmed',
+                ),
+              ],
+              'totalCount': 1,
+              'page': 1,
+              'pageSize': 10,
+              'totalPages': 1,
+              'hasPreviousPage': false,
+              'hasNextPage': false,
+            });
+          }
+
+          return jsonResponse({
+            'items': [
+              sampleOrderJson(id: 1, userFullName: 'Khách Mặc Định'),
+            ],
+            'totalCount': 1,
+            'page': 1,
+            'pageSize': 10,
+            'totalPages': 1,
+            'hasPreviousPage': false,
+            'hasNextPage': false,
+          });
+        });
+
+        final repo = AdminOrderRepository(
+          apiClient: ApiClient(
+            client: mockClient,
+            baseUrl: 'http://test.api',
+            tokenProvider: () async => 'admin_jwt',
+          ),
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            home: AdminOrderPage(repository: repo),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Khách Mặc Định'), findsOneWidget);
+
+        final searchField = find.byKey(
+          const ValueKey('admin-order-search-field'),
+        );
+        await tester.enterText(searchField, '  #15  ');
+        await tester.pump();
+
+        await tester.tap(
+          find.byKey(const ValueKey('admin-order-submit-search')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(requests.last.queryParameters['keyword'], '#15');
+        expect(requests.last.queryParameters['page'], '1');
+        expect(find.text('Nguyễn Thị Mai'), findsOneWidget);
+        expect(find.text('Khách Mặc Định'), findsNothing);
+
+        // Xóa từ khóa -> gọi lại trang 1 không kèm keyword
+        await tester.tap(
+          find.byKey(const ValueKey('admin-order-clear-search')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(requests.last.queryParameters.containsKey('keyword'), isFalse);
+        expect(find.text('Khách Mặc Định'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'AdminOrderPage lọc khoảng ngày kết hợp từ khóa, giữ bộ lọc khi phân trang và xóa bộ lọc',
+      (tester) async {
+        configureScreenSize(tester);
+        final requests = <Uri>[];
+
+        final mockClient = MockClient((request) async {
+          requests.add(request.url);
+          final qp = request.url.queryParameters;
+          final page = int.tryParse(qp['page'] ?? '1') ?? 1;
+          final status = qp['status'];
+
+          if (status == 'Cancelled') {
+            return jsonResponse({
+              'items': [],
+              'totalCount': 0,
+              'page': 1,
+              'pageSize': 10,
+              'totalPages': 0,
+              'hasPreviousPage': false,
+              'hasNextPage': false,
+            });
+          }
+
+          if (qp['fromDate'] == '2026-11-01' && qp['toDate'] == '2026-11-25') {
+            if (page == 1) {
+              return jsonResponse({
+                'items': List.generate(
+                  12,
+                  (i) => sampleOrderJson(
+                    id: 100 + i,
+                    userFullName: 'Bệnh Nhân Lọc Ngày ${i + 1}',
+                    status: 'Pending',
+                  ),
+                ),
+                'totalCount': 13,
+                'page': 1,
+                'pageSize': 12,
+                'totalPages': 2,
+                'hasPreviousPage': false,
+                'hasNextPage': true,
+              });
+            }
+            return jsonResponse({
+              'items': [
+                sampleOrderJson(
+                  id: 200,
+                  userFullName: 'Bệnh Nhân Lọc Ngày Trang 2',
+                  status: 'Pending',
+                ),
+              ],
+              'totalCount': 13,
+              'page': 2,
+              'pageSize': 12,
+              'totalPages': 2,
+              'hasPreviousPage': true,
+              'hasNextPage': false,
+            });
+          }
+
+          return jsonResponse({
+            'items': [
+              sampleOrderJson(id: 1, userFullName: 'Đơn Ban Đầu'),
+            ],
+            'totalCount': 1,
+            'page': 1,
+            'pageSize': 10,
+            'totalPages': 1,
+            'hasPreviousPage': false,
+            'hasNextPage': false,
+          });
+        });
+
+        final repo = AdminOrderRepository(
+          apiClient: ApiClient(
+            client: mockClient,
+            baseUrl: 'http://test.api',
+            tokenProvider: () async => 'admin_jwt',
+          ),
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            home: AdminOrderPage(
+              repository: repo,
+              pickDateRange: (context, initialRange) async => DateTimeRange(
+                start: DateTime(2026, 11, 1),
+                end: DateTime(2026, 11, 25),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Đơn Ban Đầu'), findsOneWidget);
+
+        // Nhập từ khóa + submit
+        await tester.enterText(
+          find.byKey(const ValueKey('admin-order-search-field')),
+          'Bệnh Nhân',
+        );
+        await tester.tap(
+          find.byKey(const ValueKey('admin-order-submit-search')),
+        );
+        await tester.pumpAndSettle();
+
+        // Chọn khoảng ngày
+        await tester.tap(
+          find.byKey(const ValueKey('admin-order-date-filter-btn')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey('admin-order-active-date-chip')),
+          findsOneWidget,
+        );
+        expect(find.text('Từ 01/11/2026 đến 25/11/2026'), findsOneWidget);
+        expect(requests.last.queryParameters['keyword'], 'Bệnh Nhân');
+        expect(requests.last.queryParameters['fromDate'], '2026-11-01');
+        expect(requests.last.queryParameters['toDate'], '2026-11-25');
+        expect(find.text('Bệnh Nhân Lọc Ngày 1'), findsOneWidget);
+
+        // Cuộn tải thêm trang 2 -> giữ nguyên keyword + fromDate + toDate
+        for (
+          var attempt = 0;
+          attempt < 5 &&
+              !requests.any((u) => u.queryParameters['page'] == '2');
+          attempt++
+        ) {
+          await tester.drag(find.byType(ListView), const Offset(0, -1000));
+          await tester.pumpAndSettle();
+        }
+
+        final page2Req = requests.firstWhere(
+          (u) => u.queryParameters['page'] == '2',
+        );
+        expect(page2Req.queryParameters['keyword'], 'Bệnh Nhân');
+        expect(page2Req.queryParameters['fromDate'], '2026-11-01');
+        expect(page2Req.queryParameters['toDate'], '2026-11-25');
+
+        // Xóa lọc ngày riêng lẻ
+        await tester.tap(
+          find.byKey(const ValueKey('admin-order-clear-date')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey('admin-order-active-date-chip')),
+          findsNothing,
+        );
+        expect(requests.last.queryParameters['keyword'], 'Bệnh Nhân');
+        expect(requests.last.queryParameters.containsKey('fromDate'), isFalse);
+        expect(requests.last.queryParameters.containsKey('toDate'), isFalse);
+
+        // Chọn trạng thái Đã hủy (trả về rỗng) -> bấm Xóa bộ lọc reset toàn bộ
+        final cancelledChip = find.byKey(
+          const ValueKey('order-filter-Cancelled'),
+        );
+        await tester.ensureVisible(cancelledChip);
+        await tester.pumpAndSettle();
+        await tester.tap(cancelledChip);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Không tìm thấy đơn đặt lịch phù hợp với bộ lọc hiện tại.'),
+          findsOneWidget,
+        );
+        final resetBtn = find.byKey(
+          const ValueKey('admin-order-reset-filters'),
+        );
+        expect(resetBtn, findsOneWidget);
+
+        await tester.tap(resetBtn);
+        await tester.pumpAndSettle();
+
+        expect(requests.last.queryParameters, {'page': '1', 'pageSize': '10'});
+        expect(find.text('Đơn Ban Đầu'), findsOneWidget);
+      },
+    );
+  });
 }

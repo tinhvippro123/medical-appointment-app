@@ -13,10 +13,15 @@ class AdminOrderPage extends StatefulWidget {
     super.key,
     this.repository,
     this.isAdminChecker,
+    this.pickDateRange,
   });
 
   final AdminOrderRepository? repository;
   final Future<bool> Function()? isAdminChecker;
+  final Future<DateTimeRange?> Function(
+    BuildContext context,
+    DateTimeRange? initialRange,
+  )? pickDateRange;
 
   @override
   State<AdminOrderPage> createState() => _AdminOrderPageState();
@@ -27,6 +32,7 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
       widget.repository ?? AdminOrderRepository();
 
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
 
   static const int _pageSize = 10;
   static const List<String?> _filterOptions = [
@@ -42,6 +48,9 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
 
   List<Order> _orders = [];
   String? _selectedStatus;
+  String _appliedKeyword = '';
+  DateTime? _fromDate;
+  DateTime? _toDate;
   bool _isLoading = true;
   bool _isLoadMore = false;
   bool _loadMoreFailed = false;
@@ -49,6 +58,19 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
   int _currentPage = 1;
   bool _hasNextPage = false;
   int _requestId = 0;
+
+  bool get _hasActiveFilters =>
+      _selectedStatus != null ||
+      _appliedKeyword.isNotEmpty ||
+      _fromDate != null ||
+      _toDate != null;
+
+  static String _formatDisplayDate(DateTime date) {
+    final d = date.day.toString().padLeft(2, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final y = date.year.toString().padLeft(4, '0');
+    return '$d/$m/$y';
+  }
 
   @override
   void initState() {
@@ -61,6 +83,7 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -106,6 +129,9 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
         page: page,
         pageSize: _pageSize,
         status: _selectedStatus,
+        keyword: _appliedKeyword,
+        fromDate: _fromDate,
+        toDate: _toDate,
       );
       if (!mounted || reqId != _requestId) return;
 
@@ -148,6 +174,9 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
         page: _currentPage + 1,
         pageSize: _pageSize,
         status: _selectedStatus,
+        keyword: _appliedKeyword,
+        fromDate: _fromDate,
+        toDate: _toDate,
       );
       if (!mounted || reqId != _requestId) return;
 
@@ -177,6 +206,113 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
     _loadPage(1);
   }
 
+  void _applyKeywordSearch() {
+    FocusScope.of(context).unfocus();
+    final trimmed = _searchController.text.trim();
+    if (_appliedKeyword == trimmed && _errorMessage == null) {
+      return;
+    }
+    setState(() {
+      _appliedKeyword = trimmed;
+      _orders = [];
+      _currentPage = 1;
+      _hasNextPage = false;
+    });
+    _loadPage(1);
+  }
+
+  void _clearKeywordSearch() {
+    final hadApplied = _appliedKeyword.isNotEmpty;
+    _searchController.clear();
+    setState(() {
+      if (hadApplied) {
+        _appliedKeyword = '';
+        _orders = [];
+        _currentPage = 1;
+        _hasNextPage = false;
+      }
+    });
+    if (hadApplied) {
+      _loadPage(1);
+    }
+  }
+
+  Future<void> _onPickDateRange() async {
+    FocusScope.of(context).unfocus();
+    final initialRange = (_fromDate != null && _toDate != null)
+        ? DateTimeRange(start: _fromDate!, end: _toDate!)
+        : null;
+
+    final picked = widget.pickDateRange != null
+        ? await widget.pickDateRange!(context, initialRange)
+        : await showDateRangePicker(
+            context: context,
+            initialDateRange: initialRange,
+            firstDate: DateTime(2024, 1, 1),
+            lastDate: DateTime.now().add(const Duration(days: 365)),
+            helpText: 'Chọn khoảng ngày đặt lịch',
+            cancelText: 'Hủy',
+            confirmText: 'Áp dụng',
+            saveText: 'Áp dụng',
+          );
+
+    if (picked == null || !mounted) {
+      return;
+    }
+
+    final nextFrom = DateTime(
+      picked.start.year,
+      picked.start.month,
+      picked.start.day,
+    );
+    final nextTo = DateTime(
+      picked.end.year,
+      picked.end.month,
+      picked.end.day,
+    );
+
+    if (_fromDate == nextFrom && _toDate == nextTo && _errorMessage == null) {
+      return;
+    }
+
+    setState(() {
+      _fromDate = nextFrom;
+      _toDate = nextTo;
+      _orders = [];
+      _currentPage = 1;
+      _hasNextPage = false;
+    });
+    await _loadPage(1);
+  }
+
+  void _clearDateFilter() {
+    if (_fromDate == null && _toDate == null) {
+      return;
+    }
+    setState(() {
+      _fromDate = null;
+      _toDate = null;
+      _orders = [];
+      _currentPage = 1;
+      _hasNextPage = false;
+    });
+    _loadPage(1);
+  }
+
+  void _resetAllFilters() {
+    _searchController.clear();
+    setState(() {
+      _selectedStatus = null;
+      _appliedKeyword = '';
+      _fromDate = null;
+      _toDate = null;
+      _orders = [];
+      _currentPage = 1;
+      _hasNextPage = false;
+    });
+    _loadPage(1);
+  }
+
   Future<void> _openDetail(Order order) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -195,38 +331,223 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
   }
 
   Widget _buildFilterBar() {
+    final hasDateFilter = _fromDate != null && _toDate != null;
+    final showClearKeyword =
+        _searchController.text.isNotEmpty || _appliedKeyword.isNotEmpty;
+
     return Container(
-      color: Colors.white,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Color(0xffe2e8f0)),
+        ),
+      ),
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: _filterOptions.map((status) {
-            final isSelected = _selectedStatus == status;
-            final label = status == null ? 'Tất cả' : OrderStatus.label(status);
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                key: ValueKey('order-filter-${status ?? 'all'}'),
-                label: Text(label),
-                selected: isSelected,
-                onSelected: (_) => _onSelectStatusFilter(status),
-                selectedColor: AppColors.light,
-                labelStyle: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : AppColors.text,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const ValueKey('admin-order-search-field'),
+                    controller: _searchController,
+                    maxLength: 100,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _applyKeywordSearch(),
+                    style: const TextStyle(fontSize: 14, color: AppColors.text),
+                    decoration: InputDecoration(
+                      hintText: 'Tìm tên, SĐT hoặc #mã đơn...',
+                      hintStyle: const TextStyle(
+                        fontSize: 13.5,
+                        color: AppColors.muted,
+                      ),
+                      counterText: '',
+                      filled: true,
+                      fillColor: const Color(0xfff8fafc),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 11,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        size: 20,
+                        color: AppColors.muted,
+                      ),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (showClearKeyword)
+                            IconButton(
+                              key: const ValueKey('admin-order-clear-search'),
+                              tooltip: 'Xóa từ khóa',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: _clearKeywordSearch,
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          IconButton(
+                            key: const ValueKey('admin-order-submit-search'),
+                            tooltip: 'Tìm kiếm',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: _applyKeywordSearch,
+                            icon: const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 19,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xffdfedf8)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xffdfedf8)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.3,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                side: BorderSide(
-                  color: isSelected
-                      ? AppColors.primary
-                      : const Color(0xffcbd5e1),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Lọc theo khoảng ngày',
+                  child: Material(
+                    color: hasDateFilter
+                        ? AppColors.light
+                        : const Color(0xfff8fafc),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      key: const ValueKey('admin-order-date-filter-btn'),
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: _onPickDateRange,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: hasDateFilter
+                                ? AppColors.primary
+                                : const Color(0xffdfedf8),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.date_range_rounded,
+                          size: 20,
+                          color: hasDateFilter
+                              ? AppColors.primary
+                              : AppColors.text,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (hasDateFilter)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Container(
+                key: const ValueKey('admin-order-active-date-chip'),
+                padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
+                decoration: BoxDecoration(
+                  color: AppColors.light,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xffbfdbfe)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.event_available_rounded,
+                      size: 15,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'Từ ${_formatDisplayDate(_fromDate!)} đến ${_formatDisplayDate(_toDate!)}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Tooltip(
+                      message: 'Xóa lọc ngày',
+                      child: InkWell(
+                        key: const ValueKey('admin-order-clear-date'),
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: _clearDateFilter,
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            );
-          }).toList(),
-        ),
+            ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: _filterOptions.map((status) {
+                final isSelected = _selectedStatus == status;
+                final label =
+                    status == null ? 'Tất cả' : OrderStatus.label(status);
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    key: ValueKey('order-filter-${status ?? 'all'}'),
+                    label: Text(label),
+                    selected: isSelected,
+                    onSelected: (_) => _onSelectStatusFilter(status),
+                    selectedColor: AppColors.light,
+                    labelStyle: TextStyle(
+                      fontSize: 13,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? AppColors.primary : AppColors.text,
+                    ),
+                    side: BorderSide(
+                      color: isSelected
+                          ? AppColors.primary
+                          : const Color(0xffcbd5e1),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -419,9 +740,17 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
     }
 
     if (_orders.isEmpty) {
-      final statusNote = _selectedStatus == null
-          ? 'Hiện chưa có đơn đặt lịch nào trong hệ thống.'
-          : 'Không có đơn đặt lịch ở trạng thái "${OrderStatus.label(_selectedStatus!)}".';
+      final String statusNote;
+      if (_hasActiveFilters) {
+        statusNote = _selectedStatus != null &&
+                _appliedKeyword.isEmpty &&
+                _fromDate == null &&
+                _toDate == null
+            ? 'Không có đơn đặt lịch ở trạng thái "${OrderStatus.label(_selectedStatus!)}".'
+            : 'Không tìm thấy đơn đặt lịch phù hợp với bộ lọc hiện tại.';
+      } else {
+        statusNote = 'Hiện chưa có đơn đặt lịch nào trong hệ thống.';
+      }
 
       return RefreshIndicator(
         onRefresh: () => _loadPage(1),
@@ -464,10 +793,27 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
                   style: const TextStyle(color: AppColors.muted),
                 ),
                 const SizedBox(height: 18),
-                OutlinedButton.icon(
-                  onPressed: () => _loadPage(1),
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Tải lại danh sách'),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    if (_hasActiveFilters)
+                      OutlinedButton.icon(
+                        key: const ValueKey('admin-order-reset-filters'),
+                        onPressed: _resetAllFilters,
+                        icon: const Icon(
+                          Icons.filter_alt_off_rounded,
+                          size: 18,
+                        ),
+                        label: const Text('Xóa bộ lọc'),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: () => _loadPage(1),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Tải lại danh sách'),
+                    ),
+                  ],
                 ),
               ],
             ),

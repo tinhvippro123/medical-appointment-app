@@ -12,12 +12,22 @@ class AdminOrderRepository {
 
   ApiClient get apiClient => _apiClient;
 
-  /// Lấy danh sách tất cả đơn đặt lịch có phân trang và lọc theo trạng thái
-  /// (GET /api/admin/orders?page=...&pageSize=...&status=...)
+  static String _formatDateParam(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  /// Lấy danh sách tất cả đơn đặt lịch có phân trang, tìm kiếm và lọc theo trạng thái / khoảng ngày
+  /// (GET /api/admin/orders?page=...&pageSize=...&status=...&keyword=...&fromDate=...&toDate=...)
   Future<PagedResult<Order>> getOrders({
     int page = 1,
     int pageSize = 10,
     String? status,
+    String? keyword,
+    DateTime? fromDate,
+    DateTime? toDate,
   }) async {
     final queryParams = <String, dynamic>{
       'page': page,
@@ -25,6 +35,15 @@ class AdminOrderRepository {
     };
     if (status != null && status.trim().isNotEmpty) {
       queryParams['status'] = status.trim();
+    }
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      queryParams['keyword'] = keyword.trim();
+    }
+    if (fromDate != null) {
+      queryParams['fromDate'] = _formatDateParam(fromDate);
+    }
+    if (toDate != null) {
+      queryParams['toDate'] = _formatDateParam(toDate);
     }
 
     final res = await _apiClient.get(
