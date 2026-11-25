@@ -7,12 +7,13 @@ class PatientProfileRepository {
     : _apiClient = apiClient ?? ApiClient();
 
   final ApiClient _apiClient;
+  static const _path = '/api/patient-profiles';
 
   ApiClient get apiClient => _apiClient;
 
   /// Lấy danh sách hồ sơ bệnh nhân của tài khoản đang đăng nhập (GET /api/patient-profiles)
   Future<List<PatientProfile>> getProfiles() async {
-    final res = await _apiClient.get('/api/patient-profiles');
+    final res = await _apiClient.get(_path);
     if (res is List) {
       return res
           .whereType<Map>()
@@ -24,21 +25,14 @@ class PatientProfileRepository {
 
   Future<List<PatientProfile>> list() => getProfiles();
 
-  Future<PatientProfile> create({
-    required String fullName,
-    required DateTime dateOfBirth,
-    required String gender,
-    required String relationship,
-  }) async {
-    final data = await _apiClient.post(
-      '/api/patient-profiles',
-      body: {
-        'fullName': fullName,
-        'dateOfBirth': dateOfBirth.toIso8601String().split('T').first,
-        'gender': gender,
-        'relationship': relationship,
-      },
-    );
+  Future<PatientProfile> save(Map<String, dynamic> body, {int? id}) async {
+    final data = id == null
+        ? await _apiClient.post(_path, body: body)
+        : await _apiClient.put('$_path/$id', body: body);
     return PatientProfile.fromJson(Map<String, dynamic>.from(data as Map));
+  }
+
+  Future<void> delete(int id) async {
+    await _apiClient.delete('$_path/$id');
   }
 }

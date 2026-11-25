@@ -3,6 +3,8 @@ import '../../core/widgets/reveal_content.dart';
 
 import '../account/account_page.dart';
 import '../booking/order_history_page.dart';
+import '../patient_profiles/patient_profiles_page.dart';
+import 'usage_guide_page.dart';
 import 'widgets/hero_banner.dart';
 import 'widgets/home_header.dart';
 import 'widgets/healthcare_functions_panel.dart';
@@ -36,6 +38,10 @@ class _HomePageState extends State<HomePage>
   }
 
   void selectTab(int value) {
+    if (value == 0) {
+      openBooking();
+      return;
+    }
     if (value == selected) return;
     setState(() => selected = value);
     if (MediaQuery.disableAnimationsOf(context)) {
@@ -44,6 +50,8 @@ class _HomePageState extends State<HomePage>
       tabAnimation.forward(from: 0);
     }
   }
+
+  void openBooking() => Navigator.of(context).pushNamed('/booking/patient');
 
   void open(String title, [IconData icon = Icons.medical_services_outlined]) =>
       Navigator.of(context).push(
@@ -69,23 +77,17 @@ class _HomePageState extends State<HomePage>
           child: IndexedStack(
             index: selected,
             children: [
-              const FeatureMessage(
-                title: 'Hóa đơn',
-                icon: Icons.receipt_long_outlined,
-              ),
+              const SizedBox.shrink(),
               if (selected == 1)
                 const OrderHistoryPage()
               else
                 const SizedBox.shrink(),
               _home(),
-              const FeatureMessage(
-                title: 'Thông báo',
-                icon: Icons.notifications_none_rounded,
-              ),
-              AccountPage(
-                onOpenHistory: () => selectTab(1),
-                onOpenBills: () => selectTab(0),
-              ),
+              if (selected == 3)
+                const PatientProfilesPage(embedded: true)
+              else
+                const SizedBox.shrink(),
+              AccountPage(onOpenHistory: () => selectTab(1)),
             ],
           ),
         ),
@@ -119,11 +121,19 @@ class _HomePageState extends State<HomePage>
                       onSelected: (service) {
                         final title = service.title.replaceAll('\n', ' ');
                         if (title == 'Đặt khám') {
-                          Navigator.of(context).pushNamed('/booking/patient');
+                          openBooking();
                         } else if (title == 'Lịch sử đặt khám') {
                           selectTab(1);
-                        } else if (title == 'Hồ sơ sức khỏe') {
-                          Navigator.of(context).pushNamed('/patient-profiles');
+                        } else if (title == 'Hồ sơ bệnh nhân') {
+                          selectTab(3);
+                        } else if (title == 'Bác sĩ') {
+                          Navigator.of(context).pushNamed('/departments');
+                        } else if (title == 'Hướng dẫn sử dụng') {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const UsageGuidePage(),
+                            ),
+                          );
                         } else {
                           open(title, service.icon);
                         }

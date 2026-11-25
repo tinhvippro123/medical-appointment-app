@@ -24,10 +24,20 @@ const demoAnnouncements = [
 ];
 
 class HealthService {
-  const HealthService(this.title, this.icon, this.color, this.asset);
-  final String title, asset;
+  const HealthService(
+    this.title,
+    this.icon,
+    this.color, {
+    this.asset,
+    this.savedOrderKey,
+  });
+  final String title;
+  final String? asset;
   final IconData icon;
   final Color color;
+  final String? savedOrderKey;
+
+  String get orderKey => savedOrderKey ?? asset ?? title;
 }
 
 const homeServices = [
@@ -35,36 +45,31 @@ const homeServices = [
     'Đặt khám',
     Icons.calendar_month_outlined,
     Color(0xff1677e8),
-    'assets/images/services/booking.png',
+    asset: 'assets/images/services/booking.png',
   ),
   HealthService(
     'Lịch sử\nđặt khám',
     Icons.history_rounded,
     Color(0xff10b69c),
-    'assets/images/services/history.png',
+    asset: 'assets/images/services/history.png',
   ),
   HealthService(
-    'Hóa đơn',
-    Icons.receipt_long_outlined,
-    Color(0xfff45454),
-    'assets/images/services/invoice.png',
-  ),
-  HealthService(
-    'Hồ sơ\nsức khỏe',
+    'Hồ sơ\nbệnh nhân',
     Icons.folder_shared_outlined,
     Color(0xff7755f5),
-    'assets/images/services/health.png',
-  ),
-  HealthService(
-    'Lắng nghe\nkhách hàng',
-    Icons.support_agent_outlined,
-    Color(0xffff7a32),
-    'assets/images/services/support.png',
+    asset: 'assets/images/services/health.png',
   ),
   HealthService(
     'Hướng dẫn\nsử dụng',
     Icons.menu_book_outlined,
     Color(0xff1677e8),
-    'assets/images/services/guide.png',
+    asset: 'assets/images/services/guide.png',
+  ),
+  HealthService(
+    'Bác sĩ',
+    Icons.medical_services_outlined,
+    Color(0xff1677e8),
+    asset: 'assets/images/services/doctor.png',
+    savedOrderKey: 'Bác sĩ',
   ),
 ];

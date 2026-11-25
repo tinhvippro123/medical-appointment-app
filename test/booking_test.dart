@@ -1013,24 +1013,11 @@ void main() {
       expect(find.text('Khám tổng quát'), findsOneWidget);
       expect(find.text('150.000 đ'), findsOneWidget);
       final payment = find.text('Tiếp tục thanh toán');
-      final insurance = find.byType(CheckboxListTile);
-      expect(tester.widget<CheckboxListTile>(insurance).value, isFalse);
+      expect(find.text('Có bảo hiểm y tế'), findsNothing);
       await tester.ensureVisible(payment);
       await tester.tap(payment);
       await tester.pumpAndSettle();
-      expect(find.text('Bảo hiểm y tế'), findsOneWidget);
-      expect(find.text('Không'), findsOneWidget);
-
-      await tester.pageBack();
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(insurance);
-      await tester.tap(insurance);
-      await tester.pumpAndSettle();
-      expect(tester.widget<CheckboxListTile>(insurance).value, isTrue);
-      await tester.ensureVisible(payment);
-      await tester.tap(payment);
-      await tester.pumpAndSettle();
-      expect(find.text('Có'), findsOneWidget);
+      expect(find.text('Bảo hiểm y tế'), findsNothing);
       expect(
         find.textContaining('Thanh toán trực tiếp tại quầy tiếp nhận'),
         findsOneWidget,
@@ -1043,7 +1030,7 @@ void main() {
       expect(tester.widget<ChoiceChip>(slot).selected, isTrue);
       await tester.tap(submit);
       await tester.pumpAndSettle();
-      expect(tester.widget<CheckboxListTile>(insurance).value, isTrue);
+      expect(find.text('Xác nhận thông tin'), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
 
@@ -1058,7 +1045,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(submit);
       await tester.pumpAndSettle();
-      expect(tester.widget<CheckboxListTile>(insurance).value, isFalse);
+      expect(find.text('Xác nhận thông tin'), findsOneWidget);
       expect(requests.every((request) => request.method == 'GET'), isTrue);
       expect(requests.where((request) => request.url.path == '/api/cart'), isEmpty);
     });

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/network/api_exception.dart';
 import '../../models/patient_profile.dart';
 import '../../repositories/patient_profile_repository.dart';
+import 'booking_profile_picker.dart';
+import 'patient_profile_form_page.dart';
 
 class PatientProfilesPage extends StatefulWidget {
   const PatientProfilesPage({
@@ -10,11 +12,13 @@ class PatientProfilesPage extends StatefulWidget {
     this.repository,
     this.profiles,
     this.forBooking = false,
+    this.embedded = false,
   });
 
   final PatientProfileRepository? repository;
   final List<PatientProfile>? profiles;
   final bool forBooking;
+  final bool embedded;
 
   @override
   State<PatientProfilesPage> createState() => _PatientProfilesPageState();
@@ -25,12 +29,27 @@ class _PatientProfilesPageState extends State<PatientProfilesPage> {
   late List<PatientProfile> _profiles = List.of(widget.profiles ?? []);
   PatientProfile? _selected;
   bool _loading = false;
+  bool _deleting = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    if (widget.profiles == null) _load();
+    if (widget.profiles == null) {
+      _load();
+    } else {
+      _selectSelf();
+    }
+  }
+
+  void _selectSelf() {
+    if (!widget.forBooking) return;
+    for (final profile in _profiles) {
+      if (profile.relationship.trim().toLowerCase() == 'bản thân') {
+        _selected = profile;
+        return;
+      }
+    }
   }
 
   Future<void> _load() async {
@@ -43,12 +62,7 @@ class _PatientProfilesPageState extends State<PatientProfilesPage> {
       if (!mounted) return;
       setState(() {
         _profiles = profiles;
-        for (final profile in profiles) {
-          if (profile.relationship.trim().toLowerCase() == 'bản thân') {
-            _selected = profile;
-            break;
-          }
-        }
+        _selectSelf();
       });
     } catch (error) {
       if (!mounted) return;
@@ -62,31 +76,100 @@ class _PatientProfilesPageState extends State<PatientProfilesPage> {
     }
   }
 
-  Future<void> _addProfile() async {
+  Future<void> _openForm([PatientProfile? existing]) async {
+    if (_deleting) return;
     final profile = await Navigator.of(context).push<PatientProfile>(
       MaterialPageRoute(
-        builder: (_) => _NewProfilePage(repository: _repository),
+        builder: (_) =>
+            PatientProfileFormPage(repository: _repository, profile: existing),
       ),
     );
     if (!mounted || profile == null) return;
     setState(() {
-      _profiles.add(profile);
+      final index = _profiles.indexWhere((item) => item.id == profile.id);
+      if (index == -1) {
+        _profiles.add(profile);
+      } else {
+        _profiles[index] = profile;
+      }
       if (widget.forBooking) _selected = profile;
     });
   }
 
+  Future<bool> _confirmDelete(PatientProfile profile) async {
+    if (_deleting) return false;
+    setState(() => _deleting = true);
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Xóa hồ sơ?'),
+          content: Text('Bạn có chắc muốn xóa hồ sơ của ${profile.fullName}?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Xóa'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return false;
+      await _repository.delete(profile.id);
+      return mounted;
+    } catch (error) {
+      if (!mounted) return false;
+      final message = error is ApiException
+          ? error.displayMessage
+          : 'Không xóa được hồ sơ. Vui lòng thử lại.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      return false;
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  void _removeProfile(PatientProfile profile) {
+    setState(() => _profiles.removeWhere((item) => item.id == profile.id));
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(widget.forBooking ? 'Chọn hồ sơ' : 'Quản lý hồ sơ'),
-    ),
+    appBar: widget.embedded
+        ? null
+        : AppBar(
+            title: Text(widget.forBooking ? 'Đặt khám' : 'Hồ sơ bệnh nhân'),
+            actions: [
+              if (widget.forBooking)
+                IconButton(
+                  tooltip: 'Về trang chủ',
+                  icon: const Icon(Icons.home_outlined),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/home', (_) => false),
+                ),
+            ],
+          ),
     body: _buildBody(),
+    floatingActionButton: widget.forBooking || _loading || _error != null
+        ? null
+        : FloatingActionButton(
+            onPressed: _deleting ? null : _openForm,
+            tooltip: 'Thêm hồ sơ mới',
+            child: const Icon(Icons.add),
+          ),
   );
 
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    Widget? status;
+    if (_loading) status = const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return Center(
+      status = Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -96,177 +179,67 @@ class _PatientProfilesPageState extends State<PatientProfilesPage> {
         ),
       );
     }
+    if (widget.forBooking) {
+      return BookingProfilePicker(
+        profiles: _profiles,
+        selectedId: _selected?.id,
+        status: status,
+        onAdd: status == null ? _openForm : null,
+        onSelect: (profile) => setState(() => _selected = profile),
+        onOpen: (profile) {
+          setState(() => _selected = profile);
+          Navigator.of(context).pushNamed('/departments', arguments: profile);
+        },
+      );
+    }
+    if (status != null) return status;
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
       children: [
         if (_profiles.isEmpty) const Text('Bạn chưa có hồ sơ bệnh nhân.'),
-        for (final profile in _profiles)
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: Text(profile.label),
-            selected: widget.forBooking && _selected?.id == profile.id,
-            trailing: widget.forBooking && _selected?.id == profile.id
-                ? const Icon(Icons.check)
-                : null,
-            onTap: widget.forBooking
-                ? () => setState(() => _selected = profile)
-                : null,
-          ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: _addProfile,
-          icon: const Icon(Icons.person_add_outlined),
-          label: const Text('Thêm hồ sơ mới'),
-        ),
-        if (widget.forBooking) ...[
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _selected == null
-                ? null
-                : () => Navigator.of(
-                    context,
-                  ).pushNamed('/departments', arguments: _selected),
-            child: const Text('Tiếp tục'),
-          ),
-        ],
+        for (final profile in _profiles) _profileCard(profile),
       ],
     );
   }
-}
 
-class _NewProfilePage extends StatefulWidget {
-  const _NewProfilePage({required this.repository});
-  final PatientProfileRepository repository;
-
-  @override
-  State<_NewProfilePage> createState() => _NewProfilePageState();
-}
-
-class _NewProfilePageState extends State<_NewProfilePage> {
-  final _form = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _relationship = TextEditingController();
-  DateTime? _birthDate;
-  String? _gender;
-  bool _saving = false;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _relationship.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickBirthDate() async {
-    final today = DateUtils.dateOnly(DateTime.now());
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _birthDate ?? DateTime(today.year - 20, 1, 1),
-      firstDate: DateTime(1900),
-      lastDate: today,
-    );
-    if (mounted && date != null) setState(() => _birthDate = date);
-  }
-
-  Future<void> _save() async {
-    if (_saving || !_form.currentState!.validate()) return;
-    if (_birthDate == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Vui lòng chọn ngày sinh.')));
-      return;
-    }
-    setState(() => _saving = true);
-    try {
-      final profile = await widget.repository.create(
-        fullName: _name.text.trim(),
-        dateOfBirth: _birthDate!,
-        gender: _gender!,
-        relationship: _relationship.text.trim(),
-      );
-      if (mounted) Navigator.pop(context, profile);
-    } catch (error) {
-      if (!mounted) return;
-      final message = error is ApiException
-          ? error.displayMessage
-          : 'Không lưu được hồ sơ. Vui lòng thử lại.';
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final birthDate = _birthDate;
-    return PopScope(
-      canPop: !_saving,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Thêm hồ sơ mới')),
-        body: Form(
-          key: _form,
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              TextFormField(
-                controller: _name,
-                enabled: !_saving,
-                maxLength: 100,
-                decoration: const InputDecoration(
-                  labelText: 'Họ và tên',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) => (value ?? '').trim().isEmpty
-                    ? 'Vui lòng nhập họ tên.'
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _saving ? null : _pickBirthDate,
-                icon: const Icon(Icons.cake_outlined),
-                label: Text(
-                  birthDate == null
-                      ? 'Chọn ngày sinh'
-                      : 'Ngày sinh: ${birthDate.day}/${birthDate.month}/${birthDate.year}',
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Giới tính',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'Nam', child: Text('Nam')),
-                  DropdownMenuItem(value: 'Nữ', child: Text('Nữ')),
-                  DropdownMenuItem(value: 'Khác', child: Text('Khác')),
-                ],
-                onChanged: _saving ? null : (value) => _gender = value,
-                validator: (value) =>
-                    value == null ? 'Vui lòng chọn giới tính.' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _relationship,
-                enabled: !_saving,
-                maxLength: 50,
-                decoration: const InputDecoration(
-                  labelText: 'Mối quan hệ',
-                  hintText: 'Ví dụ: Bản thân, Con',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) => (value ?? '').trim().isEmpty
-                    ? 'Vui lòng nhập mối quan hệ.'
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: Text(_saving ? 'Đang lưu…' : 'Lưu hồ sơ'),
-              ),
-            ],
+  Widget _profileCard(PatientProfile profile) {
+    final date = profile.dateOfBirth;
+    final birthDate = date == null
+        ? 'Chưa có ngày sinh'
+        : formatBirthDate(date);
+    return Card(
+      key: ValueKey(profile.id),
+      clipBehavior: Clip.antiAlias,
+      child: Dismissible(
+        key: ValueKey(profile.id),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: AlignmentDirectional.centerEnd,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          color: Theme.of(context).colorScheme.errorContainer,
+          child: const Icon(Icons.delete_outline),
+        ),
+        confirmDismiss: (_) => _confirmDelete(profile),
+        onDismissed: (_) => _removeProfile(profile),
+        child: ListTile(
+          leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+          title: Text(profile.fullName),
+          subtitle: Text(
+            '${profile.relationship}\n$birthDate · ${profile.gender}',
+          ),
+          isThreeLine: true,
+          onTap: () => _openForm(profile),
+          trailing: IconButton(
+            tooltip: 'Xóa hồ sơ',
+            onPressed: _deleting
+                ? null
+                : () async {
+                    if (await _confirmDelete(profile) && mounted) {
+                      _removeProfile(profile);
+                    }
+                  },
+            icon: const Icon(Icons.delete_outline),
           ),
         ),
       ),

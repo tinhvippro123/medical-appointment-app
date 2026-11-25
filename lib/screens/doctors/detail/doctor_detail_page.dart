@@ -3,9 +3,11 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../helpers/session_helper.dart';
 import '../../../models/doctor.dart';
+import '../../../models/doctor_day_off.dart';
 import '../../../models/patient_profile.dart';
 import '../../../repositories/doctor_repository.dart';
 import '../../auth/login_page.dart';
+import '../../booking/booking_logic.dart';
 import '../../booking/booking_page.dart';
 import 'widgets/related_doctor_card.dart';
 
@@ -36,6 +38,9 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
   String? _errorMessage;
   bool _isNotFound = false;
   Doctor? _doctor;
+  List<DoctorDayOff> _dayOffs = [];
+  bool _loadingDayOffs = true;
+  bool _dayOffsFailed = false;
 
   bool _isLoadingRelated = false;
   String? _relatedErrorMessage;
@@ -98,6 +103,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
 
       // Tải tiếp danh sách bác sĩ liên quan cùng khoa
       _loadRelatedDoctors(requestId);
+      _loadDayOffs(requestId);
     } on ApiException catch (e) {
       if (!mounted || requestId != _currentRequestId) return;
       setState(() {
@@ -113,6 +119,35 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
       setState(() {
         _isLoading = false;
         _errorMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+      });
+    }
+  }
+
+  Future<void> _loadDayOffs(int requestId) async {
+    final doctorId = _doctorId;
+    if (doctorId == null) return;
+    setState(() {
+      _loadingDayOffs = true;
+      _dayOffsFailed = false;
+    });
+
+    final today = normalizeDateOnly(vietnamNow());
+    try {
+      final days = await _repository.getDoctorDayOffs(
+        doctorId,
+        from: today,
+        to: today.add(const Duration(days: 60)),
+      );
+      if (!mounted || requestId != _currentRequestId) return;
+      setState(() {
+        _dayOffs = days;
+        _loadingDayOffs = false;
+      });
+    } catch (_) {
+      if (!mounted || requestId != _currentRequestId) return;
+      setState(() {
+        _dayOffsFailed = true;
+        _loadingDayOffs = false;
       });
     }
   }
@@ -304,6 +339,8 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
 
           // 4.4 Section Lịch làm việc
           _buildScheduleSection(doctor),
+          const SizedBox(height: 16),
+          _buildDayOffsSection(),
           const SizedBox(height: 20),
 
           // 4.5 Section Bác sĩ liên quan (cùng khoa)
@@ -566,6 +603,32 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
             ),
     );
   }
+
+  Widget _buildDayOffsSection() => _buildCardWrapper(
+    title: 'Lịch nghỉ sắp tới',
+    icon: Icons.event_busy_outlined,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_loadingDayOffs)
+          const Text('Đang tải lịch nghỉ…')
+        else if (_dayOffsFailed) ...[
+          const Text('Không tải được lịch nghỉ.'),
+          TextButton(
+            onPressed: () => _loadDayOffs(_currentRequestId),
+            child: const Text('Thử lại lịch nghỉ'),
+          ),
+        ] else if (_dayOffs.isEmpty)
+          const Text('Chưa có lịch nghỉ trong 60 ngày tới.')
+        else
+          for (final day in _dayOffs)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Text('${day.dayOfWeekLabel} · ${day.dateDisplay}'),
+            ),
+      ],
+    ),
+  );
 
   /// Section Bác sĩ liên quan (cùng khoa)
   Widget _buildRelatedSection() {
