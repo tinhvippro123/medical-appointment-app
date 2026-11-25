@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import '../../../../core/network/api_exception.dart';
-import '../../../../models/department.dart';
-import '../../../../models/doctor.dart';
-import '../../../../models/room.dart';
-import '../../../../repositories/department_repository.dart';
-import '../../../../repositories/doctor_repository.dart';
-import '../../../../repositories/room_repository.dart';
-import 'widgets/doctor_image_picker.dart';
+import '../../../core/widgets/upload_image_picker.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../models/department.dart';
+import '../../../models/doctor.dart';
+import '../../../models/room.dart';
+import '../../../repositories/department_repository.dart';
+import '../../../repositories/doctor_repository.dart';
+import '../../../repositories/room_repository.dart';
 
 class DoctorFormPage extends StatefulWidget {
   const DoctorFormPage({
@@ -49,7 +48,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
 
   int? _selectedDepartmentId;
   int? _selectedRoomId;
-  XFile? _selectedImage;
+  UploadImage? _selectedImage;
 
   List<Department> _departments = [];
   List<Room> _rooms = [];
@@ -232,26 +231,20 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         consultationFee: fee,
       );
 
-      // Đọc file dạng bytes để tương thích cả web và mobile
-      List<int>? imageBytes;
-      String? imageFilename;
-      if (_selectedImage != null) {
-        imageBytes = await _selectedImage!.readAsBytes();
-        imageFilename = _selectedImage!.name;
-      }
-
       if (widget.isEdit) {
         await _doctorRepository.updateDoctor(
           widget.doctor!.id,
           input,
-          imageBytes: imageBytes,
-          imageFilename: imageFilename,
+          imageBytes: _selectedImage?.bytes,
+          imageFilename: _selectedImage?.filename,
+          avatarUrl: _selectedImage?.url,
         );
       } else {
         await _doctorRepository.createDoctor(
           input,
-          imageBytes: imageBytes,
-          imageFilename: imageFilename,
+          imageBytes: _selectedImage?.bytes,
+          imageFilename: _selectedImage?.filename,
+          avatarUrl: _selectedImage?.url,
         );
       }
 
@@ -304,9 +297,13 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. Ảnh đại diện
-              DoctorImagePicker(
+              UploadImagePicker(
                 currentImageUrl: _doctorRepository.imageUrl(widget.doctor?.avatarUrl),
-                onImageSelected: (file) => _selectedImage = file,
+                selection: _selectedImage,
+                enabled: !_isSubmitting,
+                maxMegabytes: 2,
+                allowWebp: true,
+                onChanged: (selection) => setState(() => _selectedImage = selection),
               ),
               const SizedBox(height: 24),
 

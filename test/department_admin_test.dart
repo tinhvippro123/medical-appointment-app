@@ -68,7 +68,7 @@ void main() {
     expect(find.text('Khoa còn bác sĩ, không thể xóa'), findsOneWidget);
     expect(find.text('Nội tổng quát'), findsOneWidget);
   });
-  test('Lưu JSON và upload multipart đúng endpoint', () async {
+  test('Lưu thông tin, tải file và lưu URL ảnh đúng endpoint', () async {
     final requests = <http.Request>[];
     final repo = DepartmentRepository(
       baseUrl: 'http://localhost',
@@ -90,6 +90,11 @@ void main() {
       contains('multipart/form-data'),
     );
     expect(requests.last.body, contains('name="file"'));
+    const imageUrl = 'https://example.com/department.png';
+    await repo.setImageUrl(saved.id, imageUrl);
+    expect(requests.last.method, 'POST');
+    expect(requests.last.url.path, '/api/departments/1/image/url');
+    expect(jsonDecode(requests.last.body), {'imageUrl': imageUrl});
     await repo.save(id: 1, name: 'Tim mạch', description: 'Sửa');
     expect(requests.last.method, 'PUT');
   });
