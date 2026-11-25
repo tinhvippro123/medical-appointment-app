@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
+import '../core/network/api_client.dart';
 import '../helpers/session_helper.dart';
 
 class CartItem {
@@ -47,12 +48,21 @@ class CartRepository {
     http.Client? client,
     String? baseUrl,
     Future<String?> Function()? token,
+    ApiClient? apiClient,
   }) : client = client ?? http.Client(),
        baseUrl = baseUrl ?? AppConfig.baseUrl,
-       token = token ?? SessionHepler.getToken;
+       token = token ?? SessionHepler.getToken,
+       _apiClient =
+           apiClient ??
+           ApiClient(
+             client: client,
+             baseUrl: baseUrl,
+             tokenProvider: token,
+           );
   final http.Client client;
   final String baseUrl;
   final Future<String?> Function() token;
+  final ApiClient _apiClient;
   String? imageUrl(String? path) => path == null || path.isEmpty
       ? null
       : Uri.parse('$baseUrl/').resolve(path).toString();
@@ -154,5 +164,32 @@ class CartRepository {
 
   Future<void> clear() async {
     await request('DELETE', '/api/cart/clear');
+  }
+
+  /// Thêm lịch hẹn vào giỏ hàng (POST /api/cart), sử dụng ApiClient để giữ errorCode.
+  Future<CartItem?> addItem({
+    required int doctorId,
+    required int patientProfileId,
+    required DateTime appointmentDate,
+    required String timeSlot,
+    String? note,
+  }) async {
+    final trimmedNote = note?.trim();
+    final body = <String, dynamic>{
+      'doctorId': doctorId,
+      'patientProfileId': patientProfileId,
+      'appointmentDate':
+          '${appointmentDate.year.toString().padLeft(4, '0')}-'
+          '${appointmentDate.month.toString().padLeft(2, '0')}-'
+          '${appointmentDate.day.toString().padLeft(2, '0')}',
+      'timeSlot': timeSlot.trim(),
+      if (trimmedNote != null && trimmedNote.isNotEmpty) 'note': trimmedNote,
+    };
+
+    final res = await _apiClient.post('/api/cart', body: body);
+    if (res is Map && res['doctorFullName'] != null) {
+      return CartItem.fromJson(Map<String, dynamic>.from(res));
+    }
+    return null;
   }
 }

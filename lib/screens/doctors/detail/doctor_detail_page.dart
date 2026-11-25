@@ -168,9 +168,11 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
         await navigator.pushNamed('/booking', arguments: _doctor!.id);
       } else {
         final doctorId = _doctor!.id;
-        await navigator.push(MaterialPageRoute(builder: (_) => BookingPage(
-          doctorId: doctorId, patient: patient,
-        )));
+        await navigator.push(
+          MaterialPageRoute(
+            builder: (_) => BookingPage(doctorId: doctorId, patient: patient),
+          ),
+        );
       }
     } catch (_) {
       if (!mounted) return;

@@ -6,20 +6,25 @@ import 'package:medical_appointment_app/screens/home/function_order_store.dart';
 import 'package:medical_appointment_app/screens/home/function_order_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medical_appointment_app/main.dart';
+import 'package:medical_appointment_app/screens/account/account_page.dart';
 import 'package:medical_appointment_app/screens/home/home_page.dart';
 import 'package:medical_appointment_app/screens/home/widgets/home_header.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('Menu dưới có Trang chủ ở giữa và chuyển đủ 5 mục', (
     tester,
   ) async {
     await tester.pumpWidget(const MyApp(home: HomePage()));
     await tester.pumpAndSettle();
-    for (final index in [0, 1, 3, 4]) {
+    for (final index in [0, 1, 3]) {
       await tester.tap(find.byKey(ValueKey('bottom-nav-$index')));
       await tester.pumpAndSettle();
       expect(find.byType(FeatureMessage).hitTestable(), findsOneWidget);
     }
+    await tester.tap(find.byKey(const ValueKey('bottom-nav-4')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AccountPage).hitTestable(), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('bottom-nav-2')));
     await tester.pumpAndSettle();
     expect(
@@ -52,7 +57,6 @@ void main() {
     expect(find.text('Đặt khám'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
-  setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('Tìm kiếm không dấu và sắp xếp chức năng', (tester) async {
     await tester.pumpWidget(const MyApp(home: HomePage()));
     await tester.tap(find.byTooltip('Tìm kiếm chức năng'));

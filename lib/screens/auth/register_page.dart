@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/community_logo.dart';
+import '../../helpers/form_validators.dart';
 import '../../models/auth_models.dart';
 import '../../repositories/auth_repository.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+  const RegisterPage({super.key, this.authRepository});
+
+  final AuthRepository? authRepository;
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -17,6 +20,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  late final AuthRepository _authRepo =
+      widget.authRepository ?? AuthRepository();
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -31,7 +36,9 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _register() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -42,9 +49,11 @@ class _RegisterPageState extends State<RegisterPage> {
         password: _passwordController.text,
       );
 
-      await AuthRepository.register(request);
+      await _authRepo.registerRequest(request);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -56,16 +65,20 @@ class _RegisterPageState extends State<RegisterPage> {
 
       Navigator.pop(context);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
+          content: Text('$e'),
           backgroundColor: const Color(0xffef4444),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -161,12 +174,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Vui lòng nhập họ và tên';
-                    }
-                    return null;
-                  },
+                  validator: FormValidators.validateFullName,
                 ),
                 const SizedBox(height: 16),
 
@@ -199,15 +207,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Vui lòng nhập số điện thoại';
-                    }
-                    if (v.trim().length < 10) {
-                      return 'Số điện thoại phải từ 10 số';
-                    }
-                    return null;
-                  },
+                  validator: FormValidators.validatePhone,
                 ),
                 const SizedBox(height: 16),
 
@@ -249,15 +249,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) {
-                      return 'Vui lòng nhập mật khẩu';
-                    }
-                    if (v.length < 6) {
-                      return 'Mật khẩu tối thiểu 6 ký tự';
-                    }
-                    return null;
-                  },
+                  validator: FormValidators.validatePassword,
                 ),
                 const SizedBox(height: 16),
 
