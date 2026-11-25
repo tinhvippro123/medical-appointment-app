@@ -113,6 +113,7 @@ class Doctor {
 /// Model đại diện cho một khung lịch làm việc của Bác sĩ
 class DoctorSchedule {
   final int id;
+  final int doctorId;
   final int dayOfWeek; // 0=Chủ nhật, 1=Thứ 2, ..., 6=Thứ 7
   final String startTime;
   final String endTime;
@@ -120,14 +121,15 @@ class DoctorSchedule {
 
   const DoctorSchedule({
     this.id = 0,
+    this.doctorId = 0,
     required this.dayOfWeek,
     required this.startTime,
     required this.endTime,
     this.maxPatients = 0,
   });
 
-  /// Tên thứ trong tuần hiển thị bằng tiếng Việt
-  String get dayName {
+  /// Ánh xạ thứ trong tuần từ quy ước backend (0=Chủ nhật, 1=Thứ 2..6=Thứ 7)
+  static String dayOfWeekLabel(int dayOfWeek) {
     switch (dayOfWeek) {
       case 1:
         return 'Thứ 2';
@@ -149,6 +151,9 @@ class DoctorSchedule {
     }
   }
 
+  /// Tên thứ trong tuần hiển thị bằng tiếng Việt
+  String get dayName => dayOfWeekLabel(dayOfWeek);
+
   /// Cắt giây giờ từ "HH:mm:ss" hoặc "HH:mm" thành "HH:mm"
   static String formatTime(String time) {
     final trimmed = time.trim();
@@ -158,6 +163,20 @@ class DoctorSchedule {
       final hour = parts[0].padLeft(2, '0');
       final minute = parts[1].padLeft(2, '0');
       return '$hour:$minute';
+    }
+    return trimmed;
+  }
+
+  /// Chuẩn hóa chuỗi giờ sang định dạng TimeSpan backend "HH:mm:ss"
+  static String formatApiTime(String time) {
+    final trimmed = time.trim();
+    if (trimmed.isEmpty) return '';
+    final parts = trimmed.split(':');
+    if (parts.length >= 2) {
+      final hour = parts[0].padLeft(2, '0');
+      final minute = parts[1].padLeft(2, '0');
+      final second = parts.length >= 3 ? parts[2].padLeft(2, '0') : '00';
+      return '$hour:$minute:$second';
     }
     return trimmed;
   }
@@ -177,6 +196,7 @@ class DoctorSchedule {
 
   factory DoctorSchedule.fromJson(Map<String, dynamic> json) => DoctorSchedule(
     id: (json['id'] as num?)?.toInt() ?? 0,
+    doctorId: (json['doctorId'] as num?)?.toInt() ?? 0,
     dayOfWeek: (json['dayOfWeek'] as num?)?.toInt() ?? 0,
     startTime: (json['startTime'] ?? '').toString(),
     endTime: (json['endTime'] ?? '').toString(),
@@ -185,9 +205,40 @@ class DoctorSchedule {
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'doctorId': doctorId,
     'dayOfWeek': dayOfWeek,
     'startTime': startTime,
     'endTime': endTime,
+    'maxPatients': maxPatients,
+  };
+
+  /// Body JSON gửi lên API tạo/cập nhật lịch làm việc
+  Map<String, dynamic> toRequestJson() => {
+    'dayOfWeek': dayOfWeek,
+    'startTime': formatApiTime(startTime),
+    'endTime': formatApiTime(endTime),
+    'maxPatients': maxPatients,
+  };
+}
+
+/// Dữ liệu đầu vào cho Form tạo mới hoặc cập nhật khung lịch làm việc
+class DoctorScheduleFormInput {
+  final int dayOfWeek;
+  final String startTime;
+  final String endTime;
+  final int maxPatients;
+
+  const DoctorScheduleFormInput({
+    required this.dayOfWeek,
+    required this.startTime,
+    required this.endTime,
+    required this.maxPatients,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'dayOfWeek': dayOfWeek,
+    'startTime': DoctorSchedule.formatApiTime(startTime),
+    'endTime': DoctorSchedule.formatApiTime(endTime),
     'maxPatients': maxPatients,
   };
 }
@@ -226,9 +277,11 @@ class GroupedDoctorSchedule {
       map.putIfAbsent(normalizedDay, () => []).add(s);
     }
 
-    // Sắp xếp các slot trong mỗi ngày theo startTime
+    // Sắp xếp các slot trong mỗi ngày theo startTime chuẩn hóa HH:mm
     for (final list in map.values) {
-      list.sort((a, b) => a.startTime.compareTo(b.startTime));
+      list.sort(
+        (a, b) => a.startTimeFormatted.compareTo(b.startTimeFormatted),
+      );
     }
 
     // Sắp xếp các thứ từ Thứ 2 (1) -> Thứ 7 (6) -> Chủ nhật (0/7 coi như 7)

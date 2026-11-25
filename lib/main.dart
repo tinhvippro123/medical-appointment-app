@@ -9,6 +9,10 @@ import 'screens/admin/doctors/doctor_admin_page.dart';
 import 'screens/admin/roles/role_admin_page.dart';
 import 'screens/admin/users/user_admin_page.dart';
 import 'screens/auth/auth_gate_page.dart';
+import 'screens/admin/admin_home_page.dart';
+import 'screens/admin/departments/department_admin_page.dart';
+import 'screens/admin/doctors/doctor_admin_page.dart';
+import 'screens/admin/doctors/schedule/doctor_schedule_page.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/booking/booking_page.dart';
 import 'screens/cart/cart_page.dart';
@@ -44,6 +48,32 @@ class MyApp extends StatelessWidget {
         '/admin/roles': (_) => const RoleAdminPage(),
         '/admin/departments': (_) => const DepartmentAdminPage(),
         '/admin/doctors': (_) => const DoctorAdminPage(),
+        '/admin/doctors/schedules': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          int? doctorId;
+          String? doctorName;
+          if (args is DoctorScheduleRouteArgs) {
+            doctorId = args.doctorId;
+            doctorName = args.doctorName;
+          } else if (args is Map) {
+            final rawId = args['doctorId'];
+            doctorId = rawId is int
+                ? rawId
+                : int.tryParse(rawId?.toString() ?? '');
+            doctorName = args['doctorName']?.toString();
+          } else if (args is Doctor) {
+            doctorId = args.id;
+            doctorName = args.fullName;
+          } else if (args is int) {
+            doctorId = args;
+          } else if (args is String) {
+            doctorId = int.tryParse(args);
+          }
+          return DoctorSchedulePage(
+            doctorId: doctorId,
+            doctorName: doctorName,
+          );
+        },
         '/doctors': (context) {
           final argument = ModalRoute.of(context)?.settings.arguments;
           return DoctorSearchPage(
