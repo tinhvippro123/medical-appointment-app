@@ -1,6 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import '../../../core/widgets/upload_image_picker.dart';
 import '../../../models/department.dart';
 import '../../../repositories/department_repository.dart';
 
@@ -23,8 +22,7 @@ class _DepartmentFormPageState extends State<DepartmentFormPage> {
     text: widget.department?.description,
   );
   late Department? saved = widget.department;
-  Uint8List? image;
-  String? filename;
+  UploadImage? image;
   String? error;
   bool busy = false, changed = false;
   @override
@@ -32,61 +30,6 @@ class _DepartmentFormPageState extends State<DepartmentFormPage> {
     name.dispose();
     description.dispose();
     super.dispose();
-  }
-
-  Future<void> pick() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Chọn từ thư viện'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Chụp ảnh'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (source == null) return;
-    try {
-      final file = await ImagePicker().pickImage(
-        source: source,
-        imageQuality: 85,
-      );
-      if (file == null) return;
-      final ext = file.name.split('.').last.toLowerCase();
-      if (!['jpg', 'jpeg', 'png'].contains(ext)) {
-        throw const DepartmentApiException('Vui lòng chọn ảnh JPG hoặc PNG.');
-      }
-      if (await file.length() > 5 * 1024 * 1024) {
-        throw const DepartmentApiException('Ảnh phải nhỏ hơn hoặc bằng 5 MB.');
-      }
-      final bytes = await file.readAsBytes();
-      if (mounted) {
-        setState(() {
-          image = bytes;
-          filename = file.name;
-          error = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(
-          () => error = e is DepartmentApiException
-              ? e.message
-              : 'Không mở được ảnh. Kiểm tra quyền truy cập ảnh/camera.',
-        );
-      }
-    }
   }
 
   Future<void> save() async {
@@ -104,12 +47,21 @@ class _DepartmentFormPageState extends State<DepartmentFormPage> {
         imageUrl: saved?.imageUrl,
       );
       changed = true;
-      if (image != null) {
+      final selected = image;
+      if (selected != null) {
         try {
-          saved = await widget.repository.upload(saved!.id, image!, filename!);
+          if (selected.url case final url?) {
+            saved = await widget.repository.setImageUrl(saved!.id, url);
+          } else {
+            saved = await widget.repository.upload(
+              saved!.id,
+              selected.bytes!,
+              selected.filename!,
+            );
+          }
         } catch (e) {
           throw DepartmentApiException(
-            'Thông tin chuyên khoa đã lưu, nhưng upload ảnh thất bại. Bạn có thể bấm Lưu để thử lại.\n$e',
+            'Thông tin chuyên khoa đã lưu, nhưng chưa lưu được ảnh. Bạn có thể bấm Lưu để thử lại.\n$e',
           );
         }
       }
@@ -141,48 +93,12 @@ class _DepartmentFormPageState extends State<DepartmentFormPage> {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                Container(
-                  height: 180,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: const Color(0xffeaf5ff),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: image != null
-                      ? Image.memory(image!, fit: BoxFit.cover)
-                      : widget.repository.imageUrl(saved?.imageUrl) != null
-                      ? Image.network(
-                          widget.repository.imageUrl(saved?.imageUrl)!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, e, s) => const Icon(
-                            Icons.broken_image_outlined,
-                            size: 48,
-                            color: Colors.blueGrey,
-                          ),
-                        )
-                      : const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_photo_alternate_outlined,
-                              size: 48,
-                              color: Colors.blue,
-                            ),
-                            SizedBox(height: 8),
-                            Text('Ảnh chuyên khoa'),
-                          ],
-                        ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: busy ? null : pick,
-                  icon: const Icon(Icons.photo_camera_outlined),
-                  label: const Text('Chọn ảnh / Chụp ảnh'),
-                ),
-                const Text(
-                  'JPG, PNG • Tối đa 5 MB',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.blueGrey, fontSize: 12),
+                UploadImagePicker(
+                  currentImageUrl: widget.repository.imageUrl(saved?.imageUrl),
+                  selection: image,
+                  enabled: !busy,
+                  maxMegabytes: 5,
+                  onChanged: (selection) => setState(() => image = selection),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
