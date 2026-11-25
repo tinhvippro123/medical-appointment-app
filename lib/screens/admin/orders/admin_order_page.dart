@@ -245,15 +245,9 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
 
     final picked = widget.pickDateRange != null
         ? await widget.pickDateRange!(context, initialRange)
-        : await showDateRangePicker(
+        : await showDialog<DateTimeRange>(
             context: context,
-            initialDateRange: initialRange,
-            firstDate: DateTime(2024, 1, 1),
-            lastDate: DateTime.now().add(const Duration(days: 365)),
-            helpText: 'Chọn khoảng ngày đặt lịch',
-            cancelText: 'Hủy',
-            confirmText: 'Áp dụng',
-            saveText: 'Áp dụng',
+            builder: (_) => _AdminDateRangeDialog(initialRange: initialRange),
           );
 
     if (picked == null || !mounted) {
@@ -883,6 +877,287 @@ class _AdminOrderPageState extends State<AdminOrderPage> {
           if (_isAuthorized) _buildFilterBar(),
           Expanded(child: _buildBody()),
         ],
+      ),
+    );
+  }
+}
+
+class _AdminDateRangeDialog extends StatefulWidget {
+  const _AdminDateRangeDialog({this.initialRange});
+
+  final DateTimeRange? initialRange;
+
+  @override
+  State<_AdminDateRangeDialog> createState() => _AdminDateRangeDialogState();
+}
+
+class _AdminDateRangeDialogState extends State<_AdminDateRangeDialog> {
+  late DateTime _startDate;
+  late DateTime _endDate;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final initial = widget.initialRange;
+    if (initial != null) {
+      _startDate = DateTime(
+        initial.start.year,
+        initial.start.month,
+        initial.start.day,
+      );
+      _endDate = DateTime(
+        initial.end.year,
+        initial.end.month,
+        initial.end.day,
+      );
+    } else {
+      _startDate = today.subtract(const Duration(days: 6));
+      _endDate = today;
+    }
+  }
+
+  static String _fmtDate(DateTime d) {
+    final day = d.day.toString().padLeft(2, '0');
+    final month = d.month.toString().padLeft(2, '0');
+    final year = d.year.toString().padLeft(4, '0');
+    return '$day/$month/$year';
+  }
+
+  void _applyPreset(DateTime start, DateTime end) {
+    setState(() {
+      _startDate = DateTime(start.year, start.month, start.day);
+      _endDate = DateTime(end.year, end.month, end.day);
+    });
+  }
+
+  Future<void> _pickStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime(2024, 1, 1),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      helpText: 'Chọn ngày bắt đầu',
+      cancelText: 'Hủy',
+      confirmText: 'Chọn',
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _startDate = DateTime(picked.year, picked.month, picked.day);
+      if (_endDate.isBefore(_startDate)) {
+        _endDate = _startDate;
+      }
+    });
+  }
+
+  Future<void> _pickEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _endDate,
+      firstDate: DateTime(2024, 1, 1),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      helpText: 'Chọn ngày kết thúc',
+      cancelText: 'Hủy',
+      confirmText: 'Chọn',
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _endDate = DateTime(picked.year, picked.month, picked.day);
+      if (_startDate.isAfter(_endDate)) {
+        _startDate = _endDate;
+      }
+    });
+  }
+
+  Widget _buildDateField({
+    required Key fieldKey,
+    required String label,
+    required DateTime value,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Material(
+        color: const Color(0xfff8fafc),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          key: fieldKey,
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xffdfedf8)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.muted,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 15,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _fmtDate(value),
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.text,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final sevenDaysAgo = today.subtract(const Duration(days: 6));
+    final firstOfMonth = DateTime(today.year, today.month, 1);
+
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.date_range_rounded,
+                    size: 22,
+                    color: AppColors.primary,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Lọc theo khoảng ngày',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.text,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ActionChip(
+                    key: const ValueKey('date-preset-today'),
+                    label: const Text('Hôm nay'),
+                    backgroundColor: const Color(0xfff8fafc),
+                    side: const BorderSide(color: Color(0xffdfedf8)),
+                    labelStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                    onPressed: () => _applyPreset(today, today),
+                  ),
+                  ActionChip(
+                    key: const ValueKey('date-preset-7days'),
+                    label: const Text('7 ngày qua'),
+                    backgroundColor: const Color(0xfff8fafc),
+                    side: const BorderSide(color: Color(0xffdfedf8)),
+                    labelStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                    onPressed: () => _applyPreset(sevenDaysAgo, today),
+                  ),
+                  ActionChip(
+                    key: const ValueKey('date-preset-month'),
+                    label: const Text('Tháng này'),
+                    backgroundColor: const Color(0xfff8fafc),
+                    side: const BorderSide(color: Color(0xffdfedf8)),
+                    labelStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                    onPressed: () => _applyPreset(firstOfMonth, today),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _buildDateField(
+                    fieldKey: const ValueKey('date-range-pick-start'),
+                    label: 'Từ ngày',
+                    value: _startDate,
+                    onTap: _pickStartDate,
+                  ),
+                  const SizedBox(width: 10),
+                  _buildDateField(
+                    fieldKey: const ValueKey('date-range-pick-end'),
+                    label: 'Đến ngày',
+                    value: _endDate,
+                    onTap: _pickEndDate,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Hủy'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    key: const ValueKey('date-range-apply-btn'),
+                    onPressed: () => Navigator.of(context).pop(
+                      DateTimeRange(start: _startDate, end: _endDate),
+                    ),
+                    child: const Text('Áp dụng'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

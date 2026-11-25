@@ -1525,5 +1525,68 @@ void main() {
         expect(find.text('Đơn Ban Đầu'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'Hộp thoại lọc khoảng ngày mặc định hiển thị tiếng Việt dd/MM/yyyy và chọn nhanh Tháng này',
+      (tester) async {
+        configureScreenSize(tester);
+        final requests = <Uri>[];
+
+        final mockClient = MockClient((request) async {
+          requests.add(request.url);
+          return jsonResponse({
+            'items': [
+              sampleOrderJson(id: 7, userFullName: 'Lê Thanh Tính'),
+            ],
+            'totalCount': 1,
+            'page': 1,
+            'pageSize': 10,
+            'totalPages': 1,
+            'hasPreviousPage': false,
+            'hasNextPage': false,
+          });
+        });
+
+        final repo = AdminOrderRepository(
+          apiClient: ApiClient(
+            client: mockClient,
+            baseUrl: 'http://test.api',
+            tokenProvider: () async => 'admin_jwt',
+          ),
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            home: AdminOrderPage(repository: repo),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(
+          find.byKey(const ValueKey('admin-order-date-filter-btn')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Lọc theo khoảng ngày'), findsOneWidget);
+        expect(find.text('Từ ngày'), findsOneWidget);
+        expect(find.text('Đến ngày'), findsOneWidget);
+
+        await tester.tap(find.byKey(const ValueKey('date-preset-month')));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const ValueKey('date-range-apply-btn')));
+        await tester.pumpAndSettle();
+
+        final now = DateTime.now();
+        final expectedFrom =
+            '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-01';
+        expect(requests.last.queryParameters['fromDate'], expectedFrom);
+        expect(
+          find.byKey(const ValueKey('admin-order-active-date-chip')),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }
