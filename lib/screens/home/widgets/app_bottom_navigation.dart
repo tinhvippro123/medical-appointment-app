@@ -10,15 +10,15 @@ class AppBottomNavigation extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelected;
   static const labels = [
-    'Lịch sử khám',
     'Hóa đơn',
+    'Lịch sử khám',
     'Trang chủ',
     'Thông báo',
     'Tài khoản',
   ];
   static const icons = [
-    Icons.history_rounded,
     Icons.receipt_long_outlined,
+    Icons.history_rounded,
     Icons.home_rounded,
     Icons.notifications_none_rounded,
     Icons.person_outline_rounded,

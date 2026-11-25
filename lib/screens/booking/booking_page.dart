@@ -4,11 +4,12 @@ import '../../core/theme/app_theme.dart';
 import '../../helpers/session_helper.dart';
 import '../../models/doctor.dart';
 import '../../models/patient_profile.dart';
-import '../../repositories/cart_repository.dart';
 import '../../repositories/doctor_repository.dart';
 import '../../repositories/patient_profile_repository.dart';
 import '../auth/login_page.dart';
+import '../patient_profiles/patient_profiles_page.dart';
 import 'booking_logic.dart';
+import 'booking_review_page.dart';
 import 'widgets/booking_doctor_summary.dart';
 import 'widgets/booking_patient_profile_section.dart';
 import 'widgets/booking_slot_grid.dart';
@@ -20,7 +21,7 @@ class BookingPage extends StatefulWidget {
     this.doctorId,
     this.patient,
     this.doctorRepository,
-    this.cartRepository,
+    this.initialDate,
     this.patientProfileRepository,
     this.nowProvider,
     this.isLoggedIn,
@@ -29,7 +30,7 @@ class BookingPage extends StatefulWidget {
   final int? doctorId;
   final PatientProfile? patient;
   final DoctorRepository? doctorRepository;
-  final CartRepository? cartRepository;
+  final DateTime? initialDate;
   final PatientProfileRepository? patientProfileRepository;
   final DateTime Function()? nowProvider;
   final Future<bool> Function()? isLoggedIn;
@@ -40,7 +41,6 @@ class BookingPage extends StatefulWidget {
 
 class _BookingPageState extends State<BookingPage> {
   late final DoctorRepository _doctorRepository;
-  late final CartRepository _cartRepository;
   late final PatientProfileRepository _patientProfileRepository;
   final TextEditingController _noteController = TextEditingController();
 
@@ -68,14 +68,14 @@ class _BookingPageState extends State<BookingPage> {
   String? _profilesError;
   List<PatientProfile> _profiles = const [];
   int? _selectedProfileId;
+  int? _insuredProfileId;
 
-  bool _isSubmitting = false;
+  bool _openingReview = false;
 
   @override
   void initState() {
     super.initState();
     _doctorRepository = widget.doctorRepository ?? DoctorRepository();
-    _cartRepository = widget.cartRepository ?? CartRepository();
     _patientProfileRepository =
         widget.patientProfileRepository ?? PatientProfileRepository();
     if (widget.doctorId != null) {
@@ -177,7 +177,10 @@ class _BookingPageState extends State<BookingPage> {
         _dayOffDates = dayOffDates;
         _dayOffWarning = dayOffWarning;
         _firstSelectableDate = firstSelectable;
-        _selectedDate = firstSelectable;
+        final initialDate = widget.initialDate;
+        _selectedDate = initialDate == null
+            ? firstSelectable
+            : normalizeDateOnly(initialDate);
         _selectedSlot = null;
         _isLoading = false;
       });
@@ -281,7 +284,7 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   bool get _canSubmit {
-    if (_isSubmitting || _doctor == null) return false;
+    if (_openingReview || _doctor == null) return false;
     if (_firstSelectableDate == null ||
         _selectedDate == null ||
         _selectedSlot == null) {
@@ -297,100 +300,83 @@ class _BookingPageState extends State<BookingPage> {
         _selectedProfileId != null;
   }
 
+  List<BookingTimeSlot> _availableSlots() {
+    final date = _selectedDate;
+    final doctor = _doctor;
+    if (date == null ||
+        doctor == null ||
+        date.isAfter(_lastDate) ||
+        _dayOffDates.contains(date)) {
+      return const [];
+    }
+    return generateHourlySlotsForDate(
+      date: date,
+      schedules: doctor.schedules,
+      now: _currentNow(),
+    );
+  }
+
   Future<void> _handleSubmit() async {
-    if (_isSubmitting || _doctor == null || _selectedDate == null || _selectedSlot == null) {
-      return;
-    }
-
-    final loggedIn = await _checkLoggedIn();
-    if (!mounted) return;
-
-    if (!loggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng đăng nhập để đặt lịch khám')),
-      );
-      await _openLoginPage();
-      return;
-    }
-
-    if (_selectedProfileId == null) {
-      if (_profiles.isEmpty && !_isLoadingProfiles) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Bạn chưa có hồ sơ bệnh nhân. Hãy tạo hồ sơ trước khi đặt lịch.',
-            ),
-          ),
-        );
-      }
-      return;
-    }
-
-    final noteText = _noteController.text.trim();
-    if (noteText.length > 500) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ghi chú không được vượt quá 500 ký tự.'),
-          backgroundColor: Color(0xffef4444),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-
+    if (!_canSubmit) return;
+    setState(() => _openingReview = true);
     try {
-      await _cartRepository.addItem(
-        doctorId: _doctor!.id,
-        patientProfileId: _selectedProfileId!,
-        appointmentDate: _selectedDate!,
-        timeSlot: _selectedSlot!,
-        note: noteText.isEmpty ? null : noteText,
-      );
-
+      final loggedIn = await _checkLoggedIn();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã thêm vào giỏ hàng'),
-          backgroundColor: Color(0xff10b981),
-        ),
-      );
-      Navigator.pop(context, true);
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      if (e.statusCode == 401) {
-        setState(() => _requiresLogin = true);
+      if (!loggedIn) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-            ),
-            backgroundColor: Color(0xffef4444),
-          ),
+          const SnackBar(content: Text('Vui lòng đăng nhập để đặt lịch khám')),
         );
         await _openLoginPage();
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(mapBookingErrorMessage(e)),
-          backgroundColor: const Color(0xffef4444),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(mapBookingErrorMessage(e)),
-          backgroundColor: const Color(0xffef4444),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
+      final doctor = _doctor;
+      final date = _selectedDate;
+      final slot = _selectedSlot;
+      if (doctor == null || date == null || slot == null) return;
+      if (!_availableSlots().any((available) => available.label == slot)) {
+        setState(() => _selectedSlot = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Khung giờ đã chọn không còn khả dụng.'),
+          ),
+        );
+        return;
       }
+
+      final note = _noteController.text.trim();
+      for (final profile in _profiles) {
+        if (profile.id != _selectedProfileId) continue;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BookingReviewPage(
+              doctor: doctor,
+              patient: profile,
+              date: date,
+              slot: slot,
+              note: note,
+              hasHealthInsurance: _insuredProfileId == profile.id,
+              onHealthInsuranceChanged: (checked) {
+                _insuredProfileId = checked ? profile.id : null;
+              },
+            ),
+          ),
+        );
+        break;
+      }
+    } finally {
+      if (mounted) setState(() => _openingReview = false);
     }
+  }
+
+  Future<void> _openProfiles() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            PatientProfilesPage(repository: _patientProfileRepository),
+      ),
+    );
+    if (mounted) await _loadProfiles();
   }
 
   @override
@@ -401,10 +387,7 @@ class _BookingPageState extends State<BookingPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          title,
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(title, overflow: TextOverflow.ellipsis),
         elevation: 0,
       ),
       body: _buildBody(),
@@ -495,19 +478,13 @@ class _BookingPageState extends State<BookingPage> {
     final hasSchedules = doctor.schedules.isNotEmpty;
     final hasSelectableDates = _firstSelectableDate != null;
 
-    final List<BookingTimeSlot> slots = _selectedDate != null
-        ? generateHourlySlotsForDate(
-            date: _selectedDate!,
-            schedules: doctor.schedules,
-            now: _currentNow(),
-          )
-        : const [];
+    final slots = _availableSlots();
 
     final String emptySlotMessage;
-    if (_selectedDate != null &&
-        _selectedDate!.year == _firstDate.year &&
-        _selectedDate!.month == _firstDate.month &&
-        _selectedDate!.day == _firstDate.day &&
+    if (_dayOffDates.contains(_selectedDate)) {
+      emptySlotMessage = 'Bác sĩ nghỉ vào ngày đã chọn.';
+    } else if (_selectedDate != null &&
+        DateUtils.isSameDay(_selectedDate, _firstDate) &&
         hasAnyScheduleForDate(_selectedDate!, doctor.schedules)) {
       emptySlotMessage =
           'Hôm nay không còn khung giờ trống. Vui lòng chọn ngày khác.';
@@ -534,11 +511,19 @@ class _BookingPageState extends State<BookingPage> {
                 profiles: _profiles,
                 selectedProfileId: _selectedProfileId,
                 errorMessage: _profilesError,
-                enabled: !_isSubmitting,
+                enabled: !_openingReview,
                 onChanged: (val) => setState(() => _selectedProfileId = val),
                 onRetry: () => _loadProfiles(),
                 onLogin: _openLoginPage,
               ),
+              if (!_isLoadingProfiles &&
+                  !_requiresLogin &&
+                  _profilesError == null &&
+                  _profiles.isEmpty)
+                OutlinedButton(
+                  onPressed: _openProfiles,
+                  child: const Text('Quản lý hồ sơ'),
+                ),
               const SizedBox(height: 16),
               if (!hasSchedules || !hasSelectableDates)
                 _buildEmptyScheduleCard(
@@ -547,7 +532,10 @@ class _BookingPageState extends State<BookingPage> {
                       : 'Bác sĩ chưa có lịch làm việc khả dụng trong 60 ngày tới',
                 )
               else ...[
-                _buildCalendarSection(doctor),
+                if (widget.initialDate == null)
+                  _buildCalendarSection(doctor)
+                else if (_dayOffWarning != null)
+                  Text(_dayOffWarning!),
                 const SizedBox(height: 16),
                 _buildSlotSection(slots, emptySlotMessage),
                 const SizedBox(height: 16),
@@ -728,7 +716,7 @@ class _BookingPageState extends State<BookingPage> {
             slots: slots,
             selectedSlot: _selectedSlot,
             emptyMessage: emptySlotMessage,
-            enabled: !_isSubmitting,
+            enabled: !_openingReview,
             onSlotSelected: (slot) {
               setState(() => _selectedSlot = slot);
             },
@@ -752,11 +740,7 @@ class _BookingPageState extends State<BookingPage> {
         children: [
           const Row(
             children: [
-              Icon(
-                Icons.edit_note_rounded,
-                size: 20,
-                color: AppColors.primary,
-              ),
+              Icon(Icons.edit_note_rounded, size: 20, color: AppColors.primary),
               SizedBox(width: 8),
               Text(
                 'Ghi chú (tùy chọn)',
@@ -772,7 +756,7 @@ class _BookingPageState extends State<BookingPage> {
           TextField(
             key: const ValueKey('booking-note-field'),
             controller: _noteController,
-            enabled: !_isSubmitting,
+            enabled: !_openingReview,
             maxLength: 500,
             maxLines: 2,
             decoration: InputDecoration(
@@ -819,29 +803,10 @@ class _BookingPageState extends State<BookingPage> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: _isSubmitting
-            ? const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Text(
-                    'Đang thêm...',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              )
-            : const Text(
-                'Thêm vào giỏ',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
+        child: const Text(
+          'Xác nhận thông tin',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }

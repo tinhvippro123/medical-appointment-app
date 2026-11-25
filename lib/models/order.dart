@@ -196,6 +196,7 @@ class Order {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final List<OrderDetail> orderDetails;
+  final int? totalItems;
 
   const Order({
     required this.id,
@@ -210,7 +211,10 @@ class Order {
     this.createdAt,
     this.updatedAt,
     this.orderDetails = const [],
+    this.totalItems,
   });
+
+  int get appointmentCount => totalItems ?? orderDetails.length;
 
   String get totalAmountFormatted => formatMoney(totalAmount);
 
@@ -285,6 +289,7 @@ class Order {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       orderDetails: orderDetails ?? this.orderDetails,
+      totalItems: orderDetails?.length ?? totalItems,
     );
   }
 
@@ -314,6 +319,7 @@ class Order {
       createdAt: parseDateTime(json['createdAt']),
       updatedAt: parseDateTime(json['updatedAt']),
       orderDetails: details,
+      totalItems: json['totalItems'] == null ? null : parseInt(json['totalItems']),
     );
   }
 
@@ -330,6 +336,7 @@ class Order {
         'createdAt': createdAt?.toIso8601String(),
         'updatedAt': updatedAt?.toIso8601String(),
         'orderDetails': orderDetails.map((e) => e.toJson()).toList(),
+        if (totalItems != null) 'totalItems': totalItems,
       };
 
   static int parseInt(dynamic value, [int fallback = 0]) {

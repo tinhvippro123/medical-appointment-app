@@ -16,6 +16,7 @@ import 'package:medical_appointment_app/repositories/patient_profile_repository.
 import 'package:medical_appointment_app/screens/auth/login_page.dart';
 import 'package:medical_appointment_app/screens/booking/booking_logic.dart';
 import 'package:medical_appointment_app/screens/booking/booking_page.dart';
+import 'package:medical_appointment_app/screens/booking/booking_review_page.dart';
 import 'package:medical_appointment_app/screens/doctors/detail/doctor_detail_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -90,6 +91,54 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({'jwt_token': 'valid_jwt_token'});
   });
+
+  for (final width in [320.0, 1440.0]) {
+    testWidgets('Xác nhận thông tin dễ đọc ở chiều rộng $width', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = Size(width, 850);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(width < 760 ? 1.5 : 1),
+            ),
+            child: child!,
+          ),
+          home: BookingReviewPage(
+            doctor: Doctor.fromJson(sampleBookingDoctorJson()),
+            patient: const PatientProfile(
+              id: 101,
+              fullName: 'Trần Thị Minh Phương Anh',
+              relationship: 'Bản thân',
+            ),
+            date: DateTime(2026, 11, 27),
+            slot: '09:00-10:00',
+            note: 'Mang theo kết quả khám gần nhất để bác sĩ xem lại.',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final details = tester.getTopLeft(find.text('Thông tin lịch hẹn'));
+      final payment = tester.getTopLeft(find.text('Phí khám'));
+      if (width >= 760) {
+        expect(payment.dy, closeTo(details.dy, 1));
+        expect(payment.dx, greaterThan(details.dx));
+      } else {
+        expect(payment.dy, greaterThan(details.dy));
+      }
+      final button = find.ancestor(
+        of: find.text('Tiếp tục thanh toán'),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      );
+      await tester.ensureVisible(button);
+      expect(tester.getSize(button).width, lessThanOrEqualTo(300));
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   group('1. Pure Logic: Sinh slot theo giờ', () {
     test('1 ca làm việc có phần lẻ cuối (07:00-11:30) bỏ 11:00-11:30', () {
@@ -507,7 +556,6 @@ void main() {
           home: BookingPage(
             doctorId: 99,
             doctorRepository: DoctorRepository(apiClient: api404),
-            cartRepository: CartRepository(apiClient: api404),
             patientProfileRepository: PatientProfileRepository(apiClient: api404),
             nowProvider: () => DateTime(2026, 11, 25, 8, 30),
           ),
@@ -565,7 +613,6 @@ void main() {
           home: BookingPage(
             doctorId: 1,
             doctorRepository: DoctorRepository(apiClient: apiRetry),
-            cartRepository: CartRepository(apiClient: apiRetry),
             patientProfileRepository: PatientProfileRepository(apiClient: apiRetry),
             nowProvider: () => DateTime(2026, 11, 25, 8, 30),
           ),
@@ -610,7 +657,6 @@ void main() {
           home: BookingPage(
             doctorId: 1,
             doctorRepository: DoctorRepository(apiClient: api),
-            cartRepository: CartRepository(apiClient: api),
             patientProfileRepository: PatientProfileRepository(apiClient: api),
             nowProvider: () => DateTime(2026, 11, 25, 8, 30),
           ),
@@ -625,7 +671,7 @@ void main() {
       expect(submitBtn.onPressed, isNull);
     });
 
-    testWidgets('Hồ sơ rỗng: hiện thông báo và khóa nút Thêm vào giỏ kể cả khi đã chọn slot', (tester) async {
+    testWidgets('Hồ sơ rỗng: hiện thông báo và khóa nút xác nhận kể cả khi đã chọn slot', (tester) async {
       configureScreenSize(tester);
 
       final mockClient = MockClient((request) async {
@@ -652,7 +698,6 @@ void main() {
           home: BookingPage(
             doctorId: 1,
             doctorRepository: DoctorRepository(apiClient: api),
-            cartRepository: CartRepository(apiClient: api),
             patientProfileRepository: PatientProfileRepository(apiClient: api),
             nowProvider: () => DateTime(2026, 11, 25, 8, 30),
           ),
@@ -704,7 +749,6 @@ void main() {
           home: BookingPage(
             doctorId: 1,
             doctorRepository: DoctorRepository(apiClient: api),
-            cartRepository: CartRepository(apiClient: api),
             patientProfileRepository: PatientProfileRepository(apiClient: api),
             nowProvider: () => DateTime(2026, 11, 25, 8, 30),
           ),
@@ -755,7 +799,6 @@ void main() {
           home: BookingPage(
             doctorId: 1,
             doctorRepository: DoctorRepository(apiClient: api),
-            cartRepository: CartRepository(apiClient: api),
             patientProfileRepository: PatientProfileRepository(apiClient: api),
             nowProvider: () => DateTime(2026, 11, 25, 8, 30),
           ),
@@ -817,7 +860,6 @@ void main() {
             home: BookingPage(
               doctorId: 1,
               doctorRepository: DoctorRepository(apiClient: api),
-              cartRepository: CartRepository(apiClient: api),
               patientProfileRepository: PatientProfileRepository(apiClient: api),
               nowProvider: () => DateTime(2026, 11, 25, 8, 30),
             ),
@@ -899,230 +941,164 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Bấm Thêm vào giỏ gửi đúng body POST /api/cart, loading chống bấm đúp, thành công -> SnackBar + pop',
-      (tester) async {
-        configureScreenSize(tester);
-
-        final cartRequests = <Map<String, dynamic>>[];
-        final postCompleter = Completer<http.Response>();
-
-        final mockClient = MockClient((request) async {
-          if (request.url.path == '/api/doctors/1') {
-            return jsonResponse(sampleBookingDoctorJson());
+    testWidgets('Xác nhận giữ một lịch trong bộ nhớ và không gọi API giỏ', (
+      tester,
+    ) async {
+      configureScreenSize(tester);
+      final requests = <http.Request>[];
+      final api = ApiClient(
+        client: MockClient((request) async {
+          requests.add(request);
+          switch (request.url.path) {
+            case '/api/doctors/1':
+              return jsonResponse(sampleBookingDoctorJson());
+            case '/api/doctors/1/day-offs':
+              return jsonResponse([]);
+            case '/api/patient-profiles':
+              return jsonResponse(sampleProfilesJson());
+            default:
+              return jsonResponse({}, statusCode: 404);
           }
-          if (request.url.path == '/api/doctors/1/day-offs') {
-            return jsonResponse([]);
-          }
-          if (request.url.path == '/api/patient-profiles') {
-            return jsonResponse(sampleProfilesJson());
-          }
-          if (request.method == 'POST' && request.url.path == '/api/cart') {
-            cartRequests.add(jsonDecode(request.body) as Map<String, dynamic>);
-            return postCompleter.future;
-          }
-          return jsonResponse({}, statusCode: 404);
-        });
+        }),
+        baseUrl: 'http://test.api',
+        tokenProvider: () async => 'valid_jwt_token',
+      );
 
-        final api = ApiClient(
-          client: mockClient,
-          baseUrl: 'http://test.api',
-          tokenProvider: () async => 'valid_jwt_token',
-        );
-
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.light,
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: Center(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BookingPage(
-                            doctorId: 1,
-                            doctorRepository: DoctorRepository(apiClient: api),
-                            cartRepository: CartRepository(apiClient: api),
-                            patientProfileRepository:
-                                PatientProfileRepository(apiClient: api),
-                            nowProvider: () => DateTime(2026, 11, 25, 8, 30),
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('Mở đặt lịch'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => BookingPage(
+                      doctorId: 1,
+                      initialDate: DateTime(2026, 11, 27),
+                      doctorRepository: DoctorRepository(apiClient: api),
+                      patientProfileRepository:
+                          PatientProfileRepository(apiClient: api),
+                      nowProvider: () => DateTime(2026, 11, 25, 8, 30),
+                    ),
                   ),
                 ),
+                child: const Text('Mở đặt lịch'),
               ),
             ),
           ),
-        );
+        ),
+      );
 
-        await tester.tap(find.text('Mở đặt lịch'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('Mở đặt lịch'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CalendarDatePicker), findsNothing);
+      expect(find.text('09:00-10:00'), findsNothing);
+      final slot = find.widgetWithText(ChoiceChip, '13:30-14:30');
+      await tester.ensureVisible(slot);
+      await tester.tap(slot);
+      await tester.pumpAndSettle();
 
-        // Chọn ngày 27/11
-        final day27 = find.descendant(
-          of: find.byType(CalendarDatePicker),
-          matching: find.text('27'),
-        );
-        await tester.ensureVisible(day27);
-        await tester.pumpAndSettle();
-        await tester.tap(day27);
-        await tester.pumpAndSettle();
+      final note = find.byKey(const ValueKey('booking-note-field'));
+      await tester.ensureVisible(note);
+      await tester.enterText(note, 'Khám tổng quát');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final submit = find.byKey(const ValueKey('booking-submit-button'));
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
 
-        // Chọn slot 13:30-14:30
-        final slotFinder = find.widgetWithText(ChoiceChip, '13:30-14:30');
-        await tester.ensureVisible(slotFinder);
-        await tester.pumpAndSettle();
-        await tester.tap(slotFinder);
-        await tester.pumpAndSettle();
+      expect(find.text('Xác nhận thông tin'), findsOneWidget);
+      expect(find.text('Trần Văn An (Bản thân)'), findsOneWidget);
+      expect(find.text('Nội tổng quát'), findsOneWidget);
+      expect(find.textContaining('13:30-14:30'), findsOneWidget);
+      expect(find.text('Khám tổng quát'), findsOneWidget);
+      expect(find.text('150.000 đ'), findsOneWidget);
+      final payment = find.text('Tiếp tục thanh toán');
+      final insurance = find.byType(CheckboxListTile);
+      expect(tester.widget<CheckboxListTile>(insurance).value, isFalse);
+      await tester.ensureVisible(payment);
+      await tester.tap(payment);
+      await tester.pumpAndSettle();
+      expect(find.text('Bảo hiểm y tế'), findsOneWidget);
+      expect(find.text('Không'), findsOneWidget);
 
-        // Nhập ghi chú
-        final noteFinder = find.byKey(const ValueKey('booking-note-field'));
-        await tester.ensureVisible(noteFinder);
-        await tester.pumpAndSettle();
-        await tester.enterText(noteFinder, 'Khám tổng quát');
-        await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(insurance);
+      await tester.tap(insurance);
+      await tester.pumpAndSettle();
+      expect(tester.widget<CheckboxListTile>(insurance).value, isTrue);
+      await tester.ensureVisible(payment);
+      await tester.tap(payment);
+      await tester.pumpAndSettle();
+      expect(find.text('Có'), findsOneWidget);
+      expect(find.textContaining('Thanh toán trực tuyến chưa khả dụng.'), findsOneWidget);
 
-        // Bấm Thêm vào giỏ
-        final submitFinder = find.byKey(const ValueKey('booking-submit-button'));
-        await tester.ensureVisible(submitFinder);
-        await tester.pumpAndSettle();
-        await tester.tap(submitFinder);
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 50));
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(tester.widget<ChoiceChip>(slot).selected, isTrue);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+      expect(tester.widget<CheckboxListTile>(insurance).value, isTrue);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
 
-        // Đang gọi API -> nút disabled và hiện loading
-        expect(tester.widget<FilledButton>(submitFinder).onPressed, isNull);
-        expect(find.text('Đang thêm...'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mở đặt lịch'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<ChoiceChip>(slot).selected, isFalse);
+      expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+      await tester.ensureVisible(slot);
+      await tester.tap(slot);
+      await tester.pumpAndSettle();
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+      expect(tester.widget<CheckboxListTile>(insurance).value, isFalse);
+      expect(requests.every((request) => request.method == 'GET'), isTrue);
+      expect(requests.where((request) => request.url.path == '/api/cart'), isEmpty);
+    });
 
-        expect(cartRequests.length, 1);
-        expect(cartRequests.first, {
-          'doctorId': 1,
-          'patientProfileId': 101,
-          'appointmentDate': '2026-11-27',
-          'timeSlot': '13:30-14:30',
-          'note': 'Khám tổng quát',
-        });
-
-        // Hoàn thành response 201 -> SnackBar + pop
-        postCompleter.complete(
-          jsonResponse(
-            {
-              'id': 50,
-              'doctorId': 1,
-              'doctorFullName': 'Nguyễn Minh Anh',
-              'doctorAvatarUrl': null,
-              'doctorIsActive': true,
-              'departmentName': 'Nội tổng quát',
-              'consultationFee': 150000,
-              'patientProfileId': 101,
-              'patientProfileFullName': 'Trần Văn An',
-              'appointmentDate': '2026-11-27',
-              'timeSlot': '13:30-14:30',
-              'note': 'Khám tổng quát',
-            },
-            statusCode: 201,
+    testWidgets('Ngày chọn trước trùng ngày nghỉ không hiện khung giờ', (
+      tester,
+    ) async {
+      final api = ApiClient(
+        client: MockClient((request) async {
+          switch (request.url.path) {
+            case '/api/doctors/1':
+              return jsonResponse(sampleBookingDoctorJson());
+            case '/api/doctors/1/day-offs':
+              return jsonResponse([
+                {'id': 1, 'doctorId': 1, 'date': '2026-11-27'},
+              ]);
+            default:
+              return jsonResponse(sampleProfilesJson());
+          }
+        }),
+        baseUrl: 'http://test.api',
+        tokenProvider: () async => 'valid_jwt_token',
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BookingPage(
+            doctorId: 1,
+            initialDate: DateTime(2026, 11, 27),
+            doctorRepository: DoctorRepository(apiClient: api),
+            patientProfileRepository: PatientProfileRepository(apiClient: api),
+            nowProvider: () => DateTime(2026, 11, 25, 8, 30),
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        expect(find.text('Đã thêm vào giỏ hàng'), findsOneWidget);
-        expect(find.byType(BookingPage), findsNothing);
-        expect(find.text('Mở đặt lịch'), findsOneWidget);
-      },
-    );
+      expect(find.text('Bác sĩ nghỉ vào ngày đã chọn.'), findsOneWidget);
+      expect(find.byType(ChoiceChip), findsNothing);
+      final button = find.byKey(const ValueKey('booking-submit-button'));
+      expect(tester.widget<FilledButton>(button).onPressed, isNull);
+    });
 
-    testWidgets(
-      'POST /api/cart trả lỗi (CART_ITEM_DUPLICATE) -> hiện SnackBar thông báo, không pop và giữ nguyên lựa chọn',
-      (tester) async {
-        configureScreenSize(tester);
-
-        final mockClient = MockClient((request) async {
-          if (request.url.path == '/api/doctors/1') {
-            return jsonResponse(sampleBookingDoctorJson());
-          }
-          if (request.url.path == '/api/doctors/1/day-offs') {
-            return jsonResponse([]);
-          }
-          if (request.url.path == '/api/patient-profiles') {
-            return jsonResponse(sampleProfilesJson());
-          }
-          if (request.method == 'POST' && request.url.path == '/api/cart') {
-            return jsonResponse(
-              {
-                'statusCode': 400,
-                'errorCode': 'CART_ITEM_DUPLICATE',
-                'message': 'Lịch hẹn này đã có trong giỏ hàng!',
-              },
-              statusCode: 400,
-            );
-          }
-          return jsonResponse({}, statusCode: 404);
-        });
-
-        final api = ApiClient(
-          client: mockClient,
-          baseUrl: 'http://test.api',
-          tokenProvider: () async => 'valid_jwt_token',
-        );
-
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.light,
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: Center(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BookingPage(
-                            doctorId: 1,
-                            doctorRepository: DoctorRepository(apiClient: api),
-                            cartRepository: CartRepository(apiClient: api),
-                            patientProfileRepository:
-                                PatientProfileRepository(apiClient: api),
-                            nowProvider: () => DateTime(2026, 11, 25, 8, 30),
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('Mở đặt lịch'),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-
-        await tester.tap(find.text('Mở đặt lịch'));
-        await tester.pumpAndSettle();
-
-        final slotFinder = find.widgetWithText(ChoiceChip, '09:00-10:00');
-        await tester.ensureVisible(slotFinder);
-        await tester.pumpAndSettle();
-        await tester.tap(slotFinder);
-        await tester.pumpAndSettle();
-
-        final submitFinder = find.byKey(const ValueKey('booking-submit-button'));
-        await tester.ensureVisible(submitFinder);
-        await tester.pumpAndSettle();
-        await tester.tap(submitFinder);
-        await tester.pumpAndSettle();
-
-        expect(find.text('Lịch này đã có trong giỏ hàng'), findsOneWidget);
-        expect(find.byType(BookingPage), findsOneWidget);
-        // Giữ nguyên slot đã chọn để thử lại
-        expect(tester.widget<ChoiceChip>(slotFinder).selected, isTrue);
-      },
-    );
-
-    testWidgets('Chưa đăng nhập khi bấm Thêm vào giỏ -> SnackBar + chuyển sang LoginPage', (tester) async {
+    testWidgets('Chưa đăng nhập khi xác nhận -> SnackBar + chuyển sang LoginPage', (tester) async {
       configureScreenSize(tester);
       SharedPreferences.setMockInitialValues({}); // Không có token
 
@@ -1148,7 +1124,6 @@ void main() {
           home: BookingPage(
             doctorId: 1,
             doctorRepository: DoctorRepository(apiClient: api),
-            cartRepository: CartRepository(apiClient: api),
             patientProfileRepository: PatientProfileRepository(apiClient: api),
             nowProvider: () => DateTime(2026, 11, 25, 8, 30),
           ),
@@ -1209,7 +1184,6 @@ void main() {
               return BookingPage(
                 doctorId: arg is int ? arg : int.tryParse(arg?.toString() ?? ''),
                 doctorRepository: DoctorRepository(apiClient: api),
-                cartRepository: CartRepository(apiClient: api),
                 patientProfileRepository:
                     PatientProfileRepository(apiClient: api),
                 nowProvider: () => DateTime(2026, 11, 25, 8, 30),
@@ -1280,7 +1254,6 @@ void main() {
           routes: {
             '/booking': (_) => BookingPage(
                   doctorRepository: DoctorRepository(apiClient: api),
-                  cartRepository: CartRepository(apiClient: api),
                   patientProfileRepository:
                       PatientProfileRepository(apiClient: api),
                   nowProvider: () => DateTime(2026, 11, 25, 8, 30),

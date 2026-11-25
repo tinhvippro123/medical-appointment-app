@@ -5,6 +5,7 @@ import '../../models/user_role_models.dart';
 import '../../repositories/auth_repository.dart';
 import '../admin/admin_dashboard_page.dart';
 import '../auth/login_page.dart';
+import '../booking/order_history_page.dart';
 import '../home/widgets/home_header.dart';
 import 'change_password_page.dart';
 
@@ -136,9 +137,9 @@ class _AccountPageState extends State<AccountPage> {
     }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const FeaturePlaceholder(
-          title: 'Lịch sử đặt khám',
-          icon: Icons.history_rounded,
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('Lịch sử khám')),
+          body: const SafeArea(child: OrderHistoryPage()),
         ),
       ),
     );
@@ -310,9 +311,10 @@ class _AccountPageState extends State<AccountPage> {
                   _SectionCard(
                     children: [
                       _AccountMenuRow(
-                        icon: Icons.shopping_cart_outlined,
-                        title: 'Giỏ hàng lịch hẹn',
-                        onTap: () => Navigator.of(context).pushNamed('/cart'),
+                        icon: Icons.folder_shared_outlined,
+                        title: 'Hồ sơ bệnh nhân',
+                        onTap: () =>
+                            Navigator.of(context).pushNamed('/patient-profiles'),
                       ),
                       const Divider(height: 1, color: Color(0xffeaf1f8)),
                       _AccountMenuRow(

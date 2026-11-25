@@ -6,6 +6,8 @@ import '../../../models/doctor.dart';
 import '../../../models/department.dart';
 import '../../../models/patient_profile.dart';
 import '../../../repositories/doctor_repository.dart';
+import '../../booking/booking_logic.dart';
+import '../../booking/booking_page.dart';
 import '../detail/doctor_detail_page.dart';
 import 'widgets/doctor_search_card.dart';
 
@@ -18,6 +20,7 @@ class DoctorSearchPage extends StatefulWidget {
     this.department,
     this.browse = false,
     this.patient,
+    this.bookingDate,
   });
 
   final DoctorRepository? repository;
@@ -25,6 +28,7 @@ class DoctorSearchPage extends StatefulWidget {
   final Department? department;
   final bool browse;
   final PatientProfile? patient;
+  final DateTime? bookingDate;
 
   @override
   State<DoctorSearchPage> createState() => _DoctorSearchPageState();
@@ -193,6 +197,20 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
   void _navigateToDetail(int doctorId) {
     final navigator = Navigator.of(context);
     final patient = widget.patient;
+    final bookingDate = widget.bookingDate;
+    if (bookingDate != null) {
+      navigator.push(
+        MaterialPageRoute(
+          builder: (_) => BookingPage(
+            doctorId: doctorId,
+            patient: patient,
+            initialDate: bookingDate,
+            doctorRepository: _repository,
+          ),
+        ),
+      );
+      return;
+    }
     if (patient == null) {
       navigator.pushNamed('/doctors/detail', arguments: doctorId);
       return;
@@ -266,6 +284,11 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
                 widget.department?.name ?? 'Danh sách bác sĩ',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+            ),
+          if (widget.bookingDate != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text('Ngày khám · ${formatDisplayDate(widget.bookingDate!)}'),
             ),
           Expanded(child: _buildBody()),
         ],
