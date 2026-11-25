@@ -20,12 +20,12 @@ class OnlinePaymentPage extends StatefulWidget {
   const OnlinePaymentPage({
     super.key,
     required this.order,
-    this.initialMethod,
+    required this.method,
     this.repository,
   });
 
   final Order order;
-  final String? initialMethod;
+  final String method;
   final PaymentRepository? repository;
 
   @override
@@ -716,7 +716,10 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
                 const SizedBox(height: 18),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
-                _InfoLine(label: 'Mã đơn đặt lịch', value: '#${result.orderId}'),
+                _InfoLine(
+                  label: 'Mã đơn đặt lịch',
+                  value: '#${result.orderId}',
+                ),
                 _InfoLine(label: 'Phương thức', value: result.paymentMethod),
                 _InfoLine(
                   label: 'Số tiền',

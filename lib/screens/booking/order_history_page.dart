@@ -171,7 +171,29 @@ class _OrderInfoState extends State<OrderInfo> {
     }
   }
 
+  String? get _onlineMethod {
+    final method = _order.paymentMethodLabel;
+    return method == 'VNPay' || method == 'VietQR' ? method : null;
+  }
+
   Future<void> _openOnlinePayment() async {
+    final method =
+        _onlineMethod ??
+        await showDialog<String>(
+          context: context,
+          builder: (context) => SimpleDialog(
+            title: const Text('Chọn phương thức thanh toán'),
+            children: [
+              for (final option in ['VietQR', 'VNPay'])
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(context, option),
+                  child: Text(option),
+                ),
+            ],
+          ),
+        );
+    if (method == null || !mounted) return;
+
     final result = await Navigator.of(context).push<PaymentResult>(
       MaterialPageRoute(
         builder: (_) => OnlinePaymentPage(
@@ -261,7 +283,9 @@ class _OrderInfoState extends State<OrderInfo> {
                       ),
                       const SizedBox(height: 8),
                       Text(item.roomDisplay),
-                      Text('${item.appointmentDateFormatted} · ${item.timeSlot}'),
+                      Text(
+                        '${item.appointmentDateFormatted} · ${item.timeSlot}',
+                      ),
                       Text('Người khám: ${item.patientProfileFullName}'),
                       Text('Phí khám: ${item.feeFormatted}'),
                       const SizedBox(height: 8),

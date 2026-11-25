@@ -126,26 +126,26 @@ void main() {
           return _json({}, statusCode: 404);
         });
 
-        final paymentRepo = PaymentRepository(
-          apiClient: ApiClient(
-            client: client,
-            baseUrl: 'http://test.api',
-            tokenProvider: () async => 'jwt',
-          ),
-        );
+      final paymentRepo = PaymentRepository(
+        apiClient: ApiClient(
+          client: client,
+          baseUrl: 'http://test.api',
+          tokenProvider: () async => 'jwt',
+        ),
+      );
 
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.light,
-            home: Scaffold(
-              body: OrderInfo(
-                order: sampleUnpaidOrder,
-                paymentRepository: paymentRepo,
-              ),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: OrderInfo(
+              order: sampleUnpaidOrder.copyWith(paymentMethod: 'VNPay'),
+              paymentRepository: paymentRepo,
             ),
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
         expect(find.text('VNPay · Chưa thanh toán'), findsOneWidget);
 
@@ -219,17 +219,12 @@ void main() {
         expect(find.text('Thanh toán thành công!'), findsOneWidget);
         expect(find.text('VNP_TX_999'), findsOneWidget);
 
-        // Bấm Hoàn tất -> quay về OrderInfo và cập nhật thành Đã thanh toán
-        await tester.tap(find.byKey(const ValueKey('payment-done-return-btn')));
-        await tester.pumpAndSettle();
-
-        expect(find.text('VNPay · Đã thanh toán'), findsOneWidget);
-        expect(find.text('Mã giao dịch: VNP_TX_999'), findsOneWidget);
-        expect(
-          find.byKey(const ValueKey('open-online-payment-btn')),
-          findsNothing,
-        );
-      },
-    );
+      expect(find.text('VNPay · Đã thanh toán'), findsOneWidget);
+      expect(find.text('Mã giao dịch: VNP_TX_999'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('open-online-payment-btn')),
+        findsNothing,
+      );
+    });
   });
 }
