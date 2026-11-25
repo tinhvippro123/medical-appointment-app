@@ -12,6 +12,7 @@ import 'screens/admin/orders/admin_order_page.dart';
 import 'screens/admin/roles/role_admin_page.dart';
 import 'screens/admin/users/user_admin_page.dart';
 import 'screens/auth/auth_gate_page.dart';
+import 'screens/auth/forgot_password_page.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/booking/booking_page.dart';
 import 'screens/cart/cart_page.dart';
@@ -40,6 +41,7 @@ class MyApp extends StatelessWidget {
       routes: {
         if (home == null) '/': (_) => const AuthGatePage(),
         '/login': (_) => const LoginPage(),
+        '/forgot-password': (_) => const ForgotPasswordPage(),
         '/home': (_) => const HomePage(),
         '/cart': (_) => const CartPage(),
         '/booking/patient': (_) => const PatientProfilesPage(forBooking: true),

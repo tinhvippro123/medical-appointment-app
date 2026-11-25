@@ -2,6 +2,7 @@ class FormValidators {
   static final RegExp vnPhoneRegex = RegExp(r'^0\d{9}$');
   static final RegExp roleKeyRegex = RegExp(r'^[A-Za-z0-9_]+$');
   static final RegExp emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  static final RegExp otp6Regex = RegExp(r'^\d{6}$');
 
   static String? validateFullName(String? value) {
     final trimmed = value?.trim() ?? '';
@@ -35,6 +36,31 @@ class FormValidators {
     }
     if (!emailRegex.hasMatch(trimmed)) {
       return 'Email không đúng định dạng';
+    }
+    return null;
+  }
+
+  static String? validateRequiredEmail(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return 'Vui lòng nhập địa chỉ email';
+    }
+    if (trimmed.length > 100) {
+      return 'Email tối đa 100 ký tự';
+    }
+    if (!emailRegex.hasMatch(trimmed)) {
+      return 'Email không đúng định dạng';
+    }
+    return null;
+  }
+
+  static String? validateOtp6(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return 'Vui lòng nhập mã OTP';
+    }
+    if (!otp6Regex.hasMatch(trimmed)) {
+      return 'Mã OTP phải gồm đúng 6 chữ số';
     }
     return null;
   }
