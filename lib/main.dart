@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
+import 'models/department.dart';
 import 'screens/admin/admin_home_page.dart';
 import 'screens/admin/departments/department_admin_page.dart';
 import 'screens/admin/doctors/doctor_admin_page.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/cart/cart_page.dart';
+import 'screens/departments/department_list_page.dart';
 import 'screens/doctors/detail/doctor_detail_page.dart';
 import 'screens/doctors/search/doctor_search_page.dart';
 
@@ -27,13 +29,16 @@ class MyApp extends StatelessWidget {
       routes: {
         if (home == null) '/': (_) => const LoginPage(),
         '/cart': (_) => const CartPage(),
+        '/departments': (_) => const DepartmentListPage(),
         '/admin': (_) => const AdminHomePage(),
         '/admin/departments': (_) => const DepartmentAdminPage(),
         '/admin/doctors': (_) => const DoctorAdminPage(),
         '/doctors/search': (context) {
-          final initialKeyword =
-              ModalRoute.of(context)?.settings.arguments as String?;
-          return DoctorSearchPage(initialKeyword: initialKeyword);
+          final argument = ModalRoute.of(context)?.settings.arguments;
+          return DoctorSearchPage(
+            initialKeyword: argument is String ? argument : null,
+            department: argument is Department ? argument : null,
+          );
         },
         '/doctors/detail': (context) {
           final doctorId = ModalRoute.of(context)?.settings.arguments;

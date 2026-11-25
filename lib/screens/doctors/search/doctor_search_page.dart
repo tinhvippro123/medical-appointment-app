@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/doctor.dart';
+import '../../../models/department.dart';
 import '../../../repositories/doctor_repository.dart';
 import 'widgets/doctor_search_card.dart';
 
@@ -12,10 +13,12 @@ class DoctorSearchPage extends StatefulWidget {
     super.key,
     this.repository,
     this.initialKeyword,
+    this.department,
   });
 
   final DoctorRepository? repository;
   final String? initialKeyword;
+  final Department? department;
 
   @override
   State<DoctorSearchPage> createState() => _DoctorSearchPageState();
@@ -43,7 +46,9 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? DoctorRepository();
-    _searchController = TextEditingController(text: widget.initialKeyword ?? '');
+    _searchController = TextEditingController(
+      text: widget.initialKeyword ?? '',
+    );
     _scrollController.addListener(_onScroll);
   }
 
@@ -53,7 +58,9 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
     if (!_initialized) {
       _initialized = true;
       final routeArg = ModalRoute.of(context)?.settings.arguments;
-      if (_searchController.text.isEmpty && routeArg is String && routeArg.isNotEmpty) {
+      if (_searchController.text.isEmpty &&
+          routeArg is String &&
+          routeArg.isNotEmpty) {
         _searchController.text = routeArg;
       }
 
@@ -119,6 +126,7 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
 
       final result = await _repository.searchDoctors(
         keyword: keyword.isNotEmpty ? keyword : null,
+        departmentId: widget.department?.id,
         page: pageToLoad,
         pageSize: _pageSize,
       );
@@ -180,7 +188,7 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
             ),
             child: TextField(
               controller: _searchController,
-              autofocus: true,
+              autofocus: widget.department == null,
               textInputAction: TextInputAction.search,
               onChanged: _onSearchChanged,
               onSubmitted: (_) {
@@ -190,7 +198,10 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
               style: const TextStyle(fontSize: 15, color: AppColors.text),
               decoration: InputDecoration(
                 hintText: 'Tìm kiếm bác sĩ theo tên...',
-                hintStyle: const TextStyle(color: AppColors.muted, fontSize: 14),
+                hintStyle: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 14,
+                ),
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   color: AppColors.primary,
@@ -210,16 +221,27 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
           ),
         ),
       ),
-      body: _buildBody(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.department case final department?)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Text(
+                department.name,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+          Expanded(child: _buildBody()),
+        ],
+      ),
     );
   }
 
   Widget _buildBody() {
     // 1. Trạng thái Loading ban đầu
     if (_isLoading && _doctors.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     // 2. Trạng thái Lỗi khi chưa có dữ liệu
@@ -280,9 +302,12 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Thử tìm kiếm với từ khóa khác',
-                style: TextStyle(fontSize: 13, color: AppColors.muted),
+              Text(
+                widget.department != null &&
+                        _searchController.text.trim().isEmpty
+                    ? 'Chuyên khoa này chưa có bác sĩ.'
+                    : 'Thử tìm kiếm với từ khóa khác',
+                style: const TextStyle(fontSize: 13, color: AppColors.muted),
               ),
             ],
           ),
