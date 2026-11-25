@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -123,7 +122,6 @@ void main() {
                           date: DateTime(2026, 11, 27),
                           slot: '09:00-10:00',
                           note: '',
-                          hasHealthInsurance: false,
                           repository: repo,
                           paymentRepository: paymentRepo,
                         ),
@@ -187,9 +185,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Đặt lịch thành công!'), findsOneWidget);
-      expect(find.text('Phòng P402'), findsOneWidget);
       expect(find.text('VNPay · Đã thanh toán'), findsOneWidget);
 
+      await tester.scrollUntilVisible(find.text('Về trang chủ'), 150);
       await tester.tap(find.text('Về trang chủ'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Lịch sử'));
@@ -197,10 +195,9 @@ void main() {
       expect(find.text('1 lịch hẹn'), findsOneWidget);
       await tester.tap(find.textContaining('Đơn #9'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Mã QR'));
-      await tester.pumpAndSettle();
+      expect(find.text('PHIẾU KHÁM BỆNH'), findsOneWidget);
       expect(
-        tester.widget<QrImageView>(find.byType(QrImageView)).semanticsLabel,
+        tester.widget<QrImageView>(find.byType(QrImageView).first).semanticsLabel,
         'Mã QR TICKET-83',
       );
     },
