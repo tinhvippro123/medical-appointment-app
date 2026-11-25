@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'models/department.dart';
 import 'models/doctor.dart';
-import 'screens/admin/admin_home_page.dart';
+import 'screens/account/change_password_page.dart';
+import 'screens/admin/admin_dashboard_page.dart';
 import 'screens/admin/departments/department_admin_page.dart';
 import 'screens/admin/doctors/doctor_admin_page.dart';
+import 'screens/admin/roles/role_admin_page.dart';
+import 'screens/admin/users/user_admin_page.dart';
+import 'screens/auth/auth_gate_page.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/booking/booking_page.dart';
 import 'screens/cart/cart_page.dart';
 import 'screens/departments/department_list_page.dart';
 import 'screens/doctors/detail/doctor_detail_page.dart';
 import 'screens/doctors/search/doctor_search_page.dart';
+import 'screens/home/home_page.dart';
 
 void main() => runApp(const MyApp());
 
@@ -29,10 +34,14 @@ class MyApp extends StatelessWidget {
           ? configuredRoute
           : null,
       routes: {
-        if (home == null) '/': (_) => const LoginPage(),
+        if (home == null) '/': (_) => const AuthGatePage(),
+        '/login': (_) => const LoginPage(),
+        '/home': (_) => const HomePage(),
         '/cart': (_) => const CartPage(),
         '/departments': (_) => const DepartmentListPage(),
-        '/admin': (_) => const AdminHomePage(),
+        '/admin': (_) => const AdminDashboardPage(),
+        '/admin/users': (_) => const UserAdminPage(),
+        '/admin/roles': (_) => const RoleAdminPage(),
         '/admin/departments': (_) => const DepartmentAdminPage(),
         '/admin/doctors': (_) => const DoctorAdminPage(),
         '/doctors': (context) {
@@ -69,6 +78,7 @@ class MyApp extends StatelessWidget {
           }
           return BookingPage(doctorId: doctorId);
         },
+        '/change-password': (_) => const ChangePasswordPage(),
       },
       home: home,
     );
