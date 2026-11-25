@@ -145,7 +145,7 @@ void main() {
     await tester.ensureVisible(find.text('Đặt khám'));
     await tester.tap(find.text('Đặt khám'));
     await tester.pumpAndSettle();
-    expect(find.text('Đặt khám'), findsNWidgets(2));
+    expect(find.text('Danh sách chuyên khoa'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Thông tin trung tâm'));
