@@ -1571,6 +1571,44 @@ void main() {
         expect(find.text('Lọc theo khoảng ngày'), findsOneWidget);
         expect(find.text('Từ ngày'), findsOneWidget);
         expect(find.text('Đến ngày'), findsOneWidget);
+        expect(find.text('T2'), findsOneWidget);
+        expect(find.text('CN'), findsOneWidget);
+
+        // Thử nhập sai định dạng -> báo lỗi tiếng Việt
+        await tester.enterText(
+          find.byKey(const ValueKey('date-range-start-input')),
+          '32/13/2026',
+        );
+        await tester.tap(find.byKey(const ValueKey('date-range-apply-btn')));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            'Định dạng ngày không hợp lệ (nhập dd/MM/yyyy, VD: 20/11/2026).',
+          ),
+          findsOneWidget,
+        );
+
+        // Nhập trực tiếp chuẩn Việt Nam dd/MM/yyyy -> hợp lệ
+        await tester.enterText(
+          find.byKey(const ValueKey('date-range-start-input')),
+          '20/11/2026',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('date-range-end-input')),
+          '25/11/2026',
+        );
+        await tester.tap(find.byKey(const ValueKey('date-range-apply-btn')));
+        await tester.pumpAndSettle();
+
+        expect(requests.last.queryParameters['fromDate'], '2026-11-20');
+        expect(requests.last.queryParameters['toDate'], '2026-11-25');
+        expect(find.text('Từ 20/11/2026 đến 25/11/2026'), findsOneWidget);
+
+        // Mở lại và bấm chọn nhanh Tháng này
+        await tester.tap(
+          find.byKey(const ValueKey('admin-order-date-filter-btn')),
+        );
+        await tester.pumpAndSettle();
 
         await tester.tap(find.byKey(const ValueKey('date-preset-month')));
         await tester.pumpAndSettle();

@@ -892,8 +892,27 @@ class _AdminDateRangeDialog extends StatefulWidget {
 }
 
 class _AdminDateRangeDialogState extends State<_AdminDateRangeDialog> {
-  late DateTime _startDate;
-  late DateTime _endDate;
+  static final DateTime _minDate = DateTime(2024, 1, 1);
+  static const List<String> _weekDaysVi = [
+    'T2',
+    'T3',
+    'T4',
+    'T5',
+    'T6',
+    'T7',
+    'CN',
+  ];
+
+  late final TextEditingController _startController;
+  late final TextEditingController _endController;
+
+  DateTime? _startDate;
+  DateTime? _endDate;
+  late DateTime _displayedMonth;
+  int _rangeClickStep = 0;
+  String? _validationError;
+
+  DateTime get _maxDate => DateTime.now().add(const Duration(days: 365));
 
   @override
   void initState() {
@@ -916,6 +935,16 @@ class _AdminDateRangeDialogState extends State<_AdminDateRangeDialog> {
       _startDate = today.subtract(const Duration(days: 6));
       _endDate = today;
     }
+    _displayedMonth = DateTime(_endDate!.year, _endDate!.month, 1);
+    _startController = TextEditingController(text: _fmtDate(_startDate!));
+    _endController = TextEditingController(text: _fmtDate(_endDate!));
+  }
+
+  @override
+  void dispose() {
+    _startController.dispose();
+    _endController.dispose();
+    super.dispose();
   }
 
   static String _fmtDate(DateTime d) {
@@ -925,114 +954,383 @@ class _AdminDateRangeDialogState extends State<_AdminDateRangeDialog> {
     return '$day/$month/$year';
   }
 
+  static bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  static DateTime? _parseDdMmYyyy(String raw) {
+    final trimmed = raw.trim();
+    final parts = trimmed.split(RegExp(r'[/-]'));
+    if (parts.length != 3) {
+      return null;
+    }
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+    if (day == null || month == null || year == null) {
+      return null;
+    }
+    if (year < 2024 ||
+        year > 2100 ||
+        month < 1 ||
+        month > 12 ||
+        day < 1 ||
+        day > 31) {
+      return null;
+    }
+    final parsed = DateTime(year, month, day);
+    if (parsed.year != year || parsed.month != month || parsed.day != day) {
+      return null;
+    }
+    return parsed;
+  }
+
   void _applyPreset(DateTime start, DateTime end) {
+    FocusScope.of(context).unfocus();
+    final s = DateTime(start.year, start.month, start.day);
+    final e = DateTime(end.year, end.month, end.day);
     setState(() {
-      _startDate = DateTime(start.year, start.month, start.day);
-      _endDate = DateTime(end.year, end.month, end.day);
+      _startDate = s;
+      _endDate = e;
+      _displayedMonth = DateTime(e.year, e.month, 1);
+      _startController.text = _fmtDate(s);
+      _endController.text = _fmtDate(e);
+      _rangeClickStep = 0;
+      _validationError = null;
     });
   }
 
-  Future<void> _pickStartDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _startDate,
-      firstDate: DateTime(2024, 1, 1),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialEntryMode: DatePickerEntryMode.calendarOnly,
-      helpText: 'Chọn ngày bắt đầu',
-      cancelText: 'Hủy',
-      confirmText: 'Chọn',
-    );
-    if (picked == null || !mounted) {
-      return;
-    }
+  void _onStartTextChanged(String value) {
+    final parsed = _parseDdMmYyyy(value);
     setState(() {
-      _startDate = DateTime(picked.year, picked.month, picked.day);
-      if (_endDate.isBefore(_startDate)) {
-        _endDate = _startDate;
+      _validationError = null;
+      if (parsed != null) {
+        _startDate = parsed;
+        _displayedMonth = DateTime(parsed.year, parsed.month, 1);
       }
     });
   }
 
-  Future<void> _pickEndDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _endDate,
-      firstDate: DateTime(2024, 1, 1),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialEntryMode: DatePickerEntryMode.calendarOnly,
-      helpText: 'Chọn ngày kết thúc',
-      cancelText: 'Hủy',
-      confirmText: 'Chọn',
-    );
-    if (picked == null || !mounted) {
-      return;
-    }
+  void _onEndTextChanged(String value) {
+    final parsed = _parseDdMmYyyy(value);
     setState(() {
-      _endDate = DateTime(picked.year, picked.month, picked.day);
-      if (_startDate.isAfter(_endDate)) {
-        _startDate = _endDate;
+      _validationError = null;
+      if (parsed != null) {
+        _endDate = parsed;
+        _displayedMonth = DateTime(parsed.year, parsed.month, 1);
       }
     });
   }
 
-  Widget _buildDateField({
-    required Key fieldKey,
+  void _onSelectCalendarDay(DateTime day) {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _validationError = null;
+      if (_rangeClickStep == 0 || _startDate == null) {
+        _startDate = day;
+        _endDate = day;
+        _startController.text = _fmtDate(day);
+        _endController.text = _fmtDate(day);
+        _rangeClickStep = 1;
+      } else {
+        if (day.isBefore(_startDate!)) {
+          _endDate = _startDate;
+          _startDate = day;
+        } else {
+          _endDate = day;
+        }
+        _startController.text = _fmtDate(_startDate!);
+        _endController.text = _fmtDate(_endDate!);
+        _rangeClickStep = 0;
+      }
+    });
+  }
+
+  void _changeMonth(int offset) {
+    final next = DateTime(
+      _displayedMonth.year,
+      _displayedMonth.month + offset,
+      1,
+    );
+    if (next.isBefore(DateTime(_minDate.year, _minDate.month, 1))) {
+      return;
+    }
+    final maxMonth = DateTime(_maxDate.year, _maxDate.month, 1);
+    if (next.isAfter(maxMonth)) {
+      return;
+    }
+    setState(() => _displayedMonth = next);
+  }
+
+  void _submit() {
+    final parsedStart = _parseDdMmYyyy(_startController.text);
+    final parsedEnd = _parseDdMmYyyy(_endController.text);
+
+    if (parsedStart == null || parsedEnd == null) {
+      setState(() {
+        _validationError =
+            'Định dạng ngày không hợp lệ (nhập dd/MM/yyyy, VD: 20/11/2026).';
+      });
+      return;
+    }
+
+    if (parsedStart.isAfter(parsedEnd)) {
+      setState(() {
+        _validationError = 'Ngày bắt đầu không được lớn hơn ngày kết thúc.';
+      });
+      return;
+    }
+
+    Navigator.of(context).pop(DateTimeRange(start: parsedStart, end: parsedEnd));
+  }
+
+  Widget _buildPresetChip({
+    required Key chipKey,
     required String label,
-    required DateTime value,
+    required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return Expanded(
-      child: Material(
-        color: const Color(0xfff8fafc),
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          key: fieldKey,
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xffdfedf8)),
+    return Material(
+      color: isSelected ? AppColors.light : const Color(0xfff8fafc),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        key: chipKey,
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : const Color(0xffdfedf8),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.muted,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 15,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        _fmtDate(value),
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.text,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              color: isSelected ? AppColors.primary : AppColors.text,
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDateInput({
+    required Key inputKey,
+    required String label,
+    required TextEditingController controller,
+    required ValueChanged<String> onChanged,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(height: 5),
+          TextField(
+            key: inputKey,
+            controller: controller,
+            keyboardType: TextInputType.datetime,
+            onTap: onTap,
+            onChanged: onChanged,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.text,
+            ),
+            decoration: InputDecoration(
+              hintText: 'dd/MM/yyyy',
+              hintStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: AppColors.muted,
+              ),
+              isDense: true,
+              filled: true,
+              fillColor: const Color(0xfff8fafc),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xffdfedf8)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xffdfedf8)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.3,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVietnameseCalendar(DateTime today) {
+    final firstOfMonth = DateTime(
+      _displayedMonth.year,
+      _displayedMonth.month,
+      1,
+    );
+    final leadingBlanks = firstOfMonth.weekday - 1;
+    final daysInMonth = DateTime(
+      _displayedMonth.year,
+      _displayedMonth.month + 1,
+      0,
+    ).day;
+    final totalCells = ((leadingBlanks + daysInMonth + 6) ~/ 7) * 7;
+    final weekCount = totalCells ~/ 7;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xfff8fafc),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xffdfedf8)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Tháng trước',
+                onPressed: () => _changeMonth(-1),
+                icon: const Icon(Icons.chevron_left_rounded, size: 22),
+              ),
+              Expanded(
+                child: Text(
+                  'Tháng ${_displayedMonth.month}, ${_displayedMonth.year}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Tháng sau',
+                onPressed: () => _changeMonth(1),
+                icon: const Icon(Icons.chevron_right_rounded, size: 22),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: _weekDaysVi.map((label) {
+              final isSunday = label == 'CN';
+              return Expanded(
+                child: Center(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: isSunday
+                          ? const Color(0xffef4444)
+                          : AppColors.muted,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 6),
+          for (var week = 0; week < weekCount; week++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: List.generate(7, (dow) {
+                  final cellIndex = week * 7 + dow;
+                  final dayNum = cellIndex - leadingBlanks + 1;
+                  if (dayNum < 1 || dayNum > daysInMonth) {
+                    return const Expanded(child: SizedBox(height: 34));
+                  }
+
+                  final date = DateTime(
+                    _displayedMonth.year,
+                    _displayedMonth.month,
+                    dayNum,
+                  );
+                  final isDisabled =
+                      date.isBefore(_minDate) || date.isAfter(_maxDate);
+                  final isStart =
+                      _startDate != null && _isSameDay(date, _startDate!);
+                  final isEnd = _endDate != null && _isSameDay(date, _endDate!);
+                  final isEndpoint = isStart || isEnd;
+                  final isInRange = _startDate != null &&
+                      _endDate != null &&
+                      date.isAfter(_startDate!) &&
+                      date.isBefore(_endDate!);
+                  final isToday = _isSameDay(date, today);
+
+                  Color bgColor = Colors.transparent;
+                  Color textColor = AppColors.text;
+                  if (isEndpoint) {
+                    bgColor = AppColors.primary;
+                    textColor = Colors.white;
+                  } else if (isInRange) {
+                    bgColor = AppColors.light;
+                    textColor = AppColors.primary;
+                  } else if (isDisabled) {
+                    textColor = const Color(0xffcbd5e1);
+                  }
+
+                  return Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: isDisabled
+                          ? null
+                          : () => _onSelectCalendarDay(date),
+                      child: Container(
+                        height: 34,
+                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                        decoration: BoxDecoration(
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(9),
+                          border: isToday && !isEndpoint
+                              ? Border.all(color: AppColors.primary)
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$dayNum',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isEndpoint || isInRange || isToday
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: textColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1044,14 +1342,27 @@ class _AdminDateRangeDialogState extends State<_AdminDateRangeDialog> {
     final sevenDaysAgo = today.subtract(const Duration(days: 6));
     final firstOfMonth = DateTime(today.year, today.month, 1);
 
+    final isTodayPreset = _startDate != null &&
+        _endDate != null &&
+        _isSameDay(_startDate!, today) &&
+        _isSameDay(_endDate!, today);
+    final is7DaysPreset = _startDate != null &&
+        _endDate != null &&
+        _isSameDay(_startDate!, sevenDaysAgo) &&
+        _isSameDay(_endDate!, today);
+    final isMonthPreset = _startDate != null &&
+        _endDate != null &&
+        _isSameDay(_startDate!, firstOfMonth) &&
+        _isSameDay(_endDate!, today);
+
     return Dialog(
       backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: const BoxConstraints(maxWidth: 380),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1060,7 +1371,7 @@ class _AdminDateRangeDialogState extends State<_AdminDateRangeDialog> {
                 children: [
                   Icon(
                     Icons.date_range_rounded,
-                    size: 22,
+                    size: 20,
                     color: AppColors.primary,
                   ),
                   SizedBox(width: 8),
@@ -1068,7 +1379,7 @@ class _AdminDateRangeDialogState extends State<_AdminDateRangeDialog> {
                     child: Text(
                       'Lọc theo khoảng ngày',
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 16.5,
                         fontWeight: FontWeight.w700,
                         color: AppColors.text,
                       ),
@@ -1076,68 +1387,66 @@ class _AdminDateRangeDialogState extends State<_AdminDateRangeDialog> {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6,
+                runSpacing: 6,
                 children: [
-                  ActionChip(
-                    key: const ValueKey('date-preset-today'),
-                    label: const Text('Hôm nay'),
-                    backgroundColor: const Color(0xfff8fafc),
-                    side: const BorderSide(color: Color(0xffdfedf8)),
-                    labelStyle: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.text,
-                    ),
-                    onPressed: () => _applyPreset(today, today),
+                  _buildPresetChip(
+                    chipKey: const ValueKey('date-preset-today'),
+                    label: 'Hôm nay',
+                    isSelected: isTodayPreset,
+                    onTap: () => _applyPreset(today, today),
                   ),
-                  ActionChip(
-                    key: const ValueKey('date-preset-7days'),
-                    label: const Text('7 ngày qua'),
-                    backgroundColor: const Color(0xfff8fafc),
-                    side: const BorderSide(color: Color(0xffdfedf8)),
-                    labelStyle: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.text,
-                    ),
-                    onPressed: () => _applyPreset(sevenDaysAgo, today),
+                  _buildPresetChip(
+                    chipKey: const ValueKey('date-preset-7days'),
+                    label: '7 ngày qua',
+                    isSelected: is7DaysPreset,
+                    onTap: () => _applyPreset(sevenDaysAgo, today),
                   ),
-                  ActionChip(
-                    key: const ValueKey('date-preset-month'),
-                    label: const Text('Tháng này'),
-                    backgroundColor: const Color(0xfff8fafc),
-                    side: const BorderSide(color: Color(0xffdfedf8)),
-                    labelStyle: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.text,
-                    ),
-                    onPressed: () => _applyPreset(firstOfMonth, today),
+                  _buildPresetChip(
+                    chipKey: const ValueKey('date-preset-month'),
+                    label: 'Tháng này',
+                    isSelected: isMonthPreset,
+                    onTap: () => _applyPreset(firstOfMonth, today),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Row(
                 children: [
-                  _buildDateField(
-                    fieldKey: const ValueKey('date-range-pick-start'),
+                  _buildDateInput(
+                    inputKey: const ValueKey('date-range-start-input'),
                     label: 'Từ ngày',
-                    value: _startDate,
-                    onTap: _pickStartDate,
+                    controller: _startController,
+                    onTap: () => _rangeClickStep = 0,
+                    onChanged: _onStartTextChanged,
                   ),
-                  const SizedBox(width: 10),
-                  _buildDateField(
-                    fieldKey: const ValueKey('date-range-pick-end'),
+                  const SizedBox(width: 8),
+                  _buildDateInput(
+                    inputKey: const ValueKey('date-range-end-input'),
                     label: 'Đến ngày',
-                    value: _endDate,
-                    onTap: _pickEndDate,
+                    controller: _endController,
+                    onTap: () => _rangeClickStep = 1,
+                    onChanged: _onEndTextChanged,
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              if (_validationError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _validationError!,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xffdc2626),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              _buildVietnameseCalendar(today),
+              const SizedBox(height: 14),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -1148,9 +1457,7 @@ class _AdminDateRangeDialogState extends State<_AdminDateRangeDialog> {
                   const SizedBox(width: 8),
                   FilledButton(
                     key: const ValueKey('date-range-apply-btn'),
-                    onPressed: () => Navigator.of(context).pop(
-                      DateTimeRange(start: _startDate, end: _endDate),
-                    ),
+                    onPressed: _submit,
                     child: const Text('Áp dụng'),
                   ),
                 ],
