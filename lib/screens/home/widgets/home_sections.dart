@@ -65,12 +65,14 @@ class HealthcareServiceCard extends StatelessWidget {
                 border: Border.all(color: const Color(0xffb6d5de), width: .8),
               ),
               padding: const EdgeInsets.all(10),
-              child: Image.asset(
-                service.asset,
-                cacheWidth: 192,
-                fit: BoxFit.contain,
-                excludeFromSemantics: true,
-              ),
+              child: service.asset == null
+                  ? Icon(service.icon, color: service.color, size: 34)
+                  : Image.asset(
+                      service.asset!,
+                      cacheWidth: 192,
+                      fit: BoxFit.contain,
+                      excludeFromSemantics: true,
+                    ),
             ),
             const SizedBox(height: 10),
             Text(

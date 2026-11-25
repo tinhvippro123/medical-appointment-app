@@ -10,17 +10,17 @@ class AppBottomNavigation extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelected;
   static const labels = [
-    'Hóa đơn',
+    'Đặt khám',
     'Lịch sử khám',
     'Trang chủ',
-    'Thông báo',
+    'Hồ sơ bệnh nhân',
     'Tài khoản',
   ];
   static const icons = [
-    Icons.receipt_long_outlined,
+    Icons.calendar_month_outlined,
     Icons.history_rounded,
     Icons.home_rounded,
-    Icons.notifications_none_rounded,
+    Icons.badge_outlined,
     Icons.person_outline_rounded,
   ];
   @override

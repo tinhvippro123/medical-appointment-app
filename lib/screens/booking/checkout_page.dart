@@ -18,7 +18,6 @@ class CheckoutPage extends StatefulWidget {
     required this.date,
     required this.slot,
     required this.note,
-    required this.hasHealthInsurance,
     this.repository,
     this.paymentRepository,
   });
@@ -28,7 +27,6 @@ class CheckoutPage extends StatefulWidget {
   final DateTime date;
   final String slot;
   final String note;
-  final bool hasHealthInsurance;
   final OrderRepository? repository;
   final PaymentRepository? paymentRepository;
 
@@ -148,12 +146,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         subtitle: Text(
                           '${widget.patient.displayLabel}\n'
                           '${formatDisplayDate(widget.date)} · ${widget.slot}',
-                        ),
-                      ),
-                      ListTile(
-                        title: const Text('Bảo hiểm y tế'),
-                        subtitle: Text(
-                          widget.hasHealthInsurance ? 'Có' : 'Không',
                         ),
                       ),
                       ListTile(

@@ -6,7 +6,7 @@ class FunctionOrderStore {
   Future<List<HealthService>> load() async {
     final saved =
         (await SharedPreferences.getInstance()).getStringList(key) ?? [];
-    final remaining = {for (final item in homeServices) item.asset: item};
+    final remaining = {for (final item in homeServices) item.orderKey: item};
     final result = <HealthService>[];
     for (final id in saved) {
       final item = remaining.remove(id);
@@ -18,7 +18,7 @@ class FunctionOrderStore {
   Future<void> save(List<HealthService> items) async {
     final success = await (await SharedPreferences.getInstance()).setStringList(
       key,
-      items.map((item) => item.asset).toList(),
+      items.map((item) => item.orderKey).toList(),
     );
     if (!success) throw StateError('Không lưu được thứ tự chức năng');
   }

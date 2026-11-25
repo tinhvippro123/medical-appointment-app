@@ -6,7 +6,7 @@ import '../../models/patient_profile.dart';
 import 'booking_logic.dart';
 import 'checkout_page.dart';
 
-class BookingReviewPage extends StatefulWidget {
+class BookingReviewPage extends StatelessWidget {
   const BookingReviewPage({
     super.key,
     required this.doctor,
@@ -14,8 +14,6 @@ class BookingReviewPage extends StatefulWidget {
     required this.date,
     required this.slot,
     required this.note,
-    this.hasHealthInsurance = false,
-    this.onHealthInsuranceChanged,
   });
 
   final Doctor doctor;
@@ -23,26 +21,16 @@ class BookingReviewPage extends StatefulWidget {
   final DateTime date;
   final String slot;
   final String note;
-  final bool hasHealthInsurance;
-  final ValueChanged<bool>? onHealthInsuranceChanged;
-
-  @override
-  State<BookingReviewPage> createState() => _BookingReviewPageState();
-}
-
-class _BookingReviewPageState extends State<BookingReviewPage> {
-  late bool _hasHealthInsurance = widget.hasHealthInsurance;
 
   void _openPayment(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CheckoutPage(
-          doctor: widget.doctor,
-          patient: widget.patient,
-          date: widget.date,
-          slot: widget.slot,
-          note: widget.note,
-          hasHealthInsurance: _hasHealthInsurance,
+          doctor: doctor,
+          patient: patient,
+          date: date,
+          slot: slot,
+          note: note,
         ),
       ),
     );
@@ -126,7 +114,7 @@ class _BookingReviewPageState extends State<BookingReviewPage> {
               ),
               const SizedBox(height: 4),
               Text(
-                formatDisplayDate(widget.date),
+                formatDisplayDate(date),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -135,7 +123,7 @@ class _BookingReviewPageState extends State<BookingReviewPage> {
               ),
               const SizedBox(height: 2),
               Text(
-                widget.slot,
+                slot,
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ],
@@ -152,44 +140,30 @@ class _BookingReviewPageState extends State<BookingReviewPage> {
         _DetailRow(
           icon: Icons.person_outline,
           label: 'Người khám',
-          value: widget.patient.displayLabel,
+          value: patient.displayLabel,
         ),
         _DetailRow(
           icon: Icons.medical_services_outlined,
           label: 'Bác sĩ',
-          value: widget.doctor.fullName,
+          value: doctor.fullName,
         ),
         _DetailRow(
           icon: Icons.local_hospital_outlined,
           label: 'Chuyên khoa',
-          value: widget.doctor.departmentName,
+          value: doctor.departmentName,
         ),
-        if (widget.doctor.roomNumber?.trim().isNotEmpty == true)
+        if (doctor.roomNumber?.trim().isNotEmpty == true)
           _DetailRow(
             icon: Icons.meeting_room_outlined,
             label: 'Phòng khám',
-            value: widget.doctor.roomDetailDisplay,
+            value: doctor.roomDetailDisplay,
           ),
-        if (widget.note.isNotEmpty)
+        if (note.isNotEmpty)
           _DetailRow(
             icon: Icons.notes_rounded,
             label: 'Ghi chú',
-            value: widget.note,
+            value: note,
           ),
-        const SizedBox(height: 8),
-        const Divider(height: 1, color: Color(0xffe2e8f0)),
-        CheckboxListTile(
-          title: const Text('Có bảo hiểm y tế'),
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          activeColor: AppColors.primary,
-          value: _hasHealthInsurance,
-          onChanged: (value) {
-            final checked = value == true;
-            setState(() => _hasHealthInsurance = checked);
-            widget.onHealthInsuranceChanged?.call(checked);
-          },
-        ),
       ],
     ),
   );
@@ -200,7 +174,7 @@ class _BookingReviewPageState extends State<BookingReviewPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          widget.doctor.feeFormatted,
+          doctor.feeFormatted,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             color: AppColors.dark,
             fontWeight: FontWeight.w800,
