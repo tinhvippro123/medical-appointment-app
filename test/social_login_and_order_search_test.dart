@@ -6,11 +6,13 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:medical_appointment_app/core/network/api_client.dart';
 import 'package:medical_appointment_app/core/theme/app_theme.dart';
+import 'package:medical_appointment_app/models/auth_models.dart';
 import 'package:medical_appointment_app/repositories/auth_repository.dart';
 import 'package:medical_appointment_app/repositories/order_repository.dart';
 import 'package:medical_appointment_app/screens/auth/login_page.dart';
 import 'package:medical_appointment_app/screens/booking/order_history_page.dart';
 import 'package:medical_appointment_app/screens/home/home_page.dart';
+import 'package:medical_appointment_app/services/social_auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 http.Response _json(Object body, {int statusCode = 200}) {
@@ -34,7 +36,7 @@ String _fakePatientJwt() {
         utf8.encode(
           jsonEncode({
             'sub': '12',
-            'name': 'Nguyễn Minh An',
+            'name': 'Lê Thanh Tính',
             'phone': 'GG_8391024',
             'Role': 'PATIENT',
             'exp': exp,
@@ -45,6 +47,30 @@ String _fakePatientJwt() {
   return '$header.$payload.sig';
 }
 
+class _FakeSocialAuthGateway implements SocialAuthGateway {
+  @override
+  Future<SocialLoginRequest?> authenticate(String provider) async {
+    return switch (provider) {
+      'Google' => const SocialLoginRequest(
+        provider: 'Google',
+        idToken: 'real-google-id-token',
+        email: 'lethanhtinh2004@gmail.com',
+        fullName: 'Lê Thanh Tính',
+      ),
+      'Facebook' => const SocialLoginRequest(
+        provider: 'Facebook',
+        accessToken: 'real-facebook-access-token',
+      ),
+      'Zalo' => const SocialLoginRequest(
+        provider: 'Zalo',
+        oauthCode: 'real-zalo-oauth-code',
+        codeVerifier: 'real-pkce-verifier',
+      ),
+      _ => null,
+    };
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -52,64 +78,66 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('Đăng nhập bằng Gmail / Facebook / Zalo trên LoginPage hoạt động chuẩn', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1080, 1920);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+  testWidgets(
+    'Đăng nhập OAuth thật bằng Gmail / Facebook / Zalo gửi token chuẩn về Backend và vào HomePage',
+    (tester) async {
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-    Map<String, dynamic>? socialBody;
-    final client = MockClient((req) async {
-      if (req.url.path == '/api/auth/social-login') {
-        socialBody = jsonDecode(req.body) as Map<String, dynamic>;
-        return _json({
-          'token': _fakePatientJwt(),
-          'message': 'Đăng nhập bằng Google thành công!',
-          'provider': 'Google',
-          'isNewUser': true,
-        });
-      }
-      return _json({'items': [], 'totalCount': 0, 'page': 1, 'pageSize': 10});
-    });
+      Map<String, dynamic>? socialBody;
+      final client = MockClient((req) async {
+        if (req.url.path == '/api/auth/social-login') {
+          socialBody = jsonDecode(req.body) as Map<String, dynamic>;
+          return _json({
+            'token': _fakePatientJwt(),
+            'message': 'Đăng nhập bằng Google thành công!',
+            'provider': socialBody!['provider'],
+            'isNewUser': false,
+          });
+        }
+        return _json({'items': [], 'totalCount': 0, 'page': 1, 'pageSize': 10});
+      });
 
-    final authRepo = AuthRepository(
-      client: client,
-      baseUrl: 'http://test.api',
-      token: () async => null,
-    );
+      final authRepo = AuthRepository(
+        client: client,
+        baseUrl: 'http://test.api',
+        token: () async => null,
+      );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: LoginPage(authRepository: authRepo),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: LoginPage(
+            authRepository: authRepo,
+            socialAuthGateway: _FakeSocialAuthGateway(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('social-login-google-btn')), findsOneWidget);
-    expect(find.byKey(const ValueKey('social-login-facebook-btn')), findsOneWidget);
-    expect(find.byKey(const ValueKey('social-login-zalo-btn')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('social-login-google-btn')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('social-login-facebook-btn')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('social-login-zalo-btn')),
+        findsOneWidget,
+      );
 
-    await tester.tap(find.byKey(const ValueKey('social-login-google-btn')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('social-login-google-btn')));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byKey(const ValueKey('social-identifier-field')),
-      'minhan@gmail.com',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey('social-fullname-field')),
-      'Nguyễn Minh An',
-    );
-    await tester.tap(find.byKey(const ValueKey('social-confirm-submit-btn')));
-    await tester.pumpAndSettle();
-
-    expect(socialBody?['provider'], 'Google');
-    expect(socialBody?['email'], 'minhan@gmail.com');
-    expect(socialBody?['fullName'], 'Nguyễn Minh An');
-    expect(find.byType(HomePage), findsOneWidget);
-  });
+      expect(socialBody?['provider'], 'Google');
+      expect(socialBody?['idToken'], 'real-google-id-token');
+      expect(socialBody?['email'], 'lethanhtinh2004@gmail.com');
+      expect(find.byType(HomePage), findsOneWidget);
+    },
+  );
 
   testWidgets('Tìm kiếm và lọc đơn hàng phía bệnh nhân trong OrderHistoryPage', (
     tester,

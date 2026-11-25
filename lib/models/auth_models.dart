@@ -180,35 +180,57 @@ class UpdateMyProfileRequest {
 
 class SocialLoginRequest {
   final String provider;
-  final String providerUserId;
-  final String fullName;
+  final String? idToken;
+  final String? accessToken;
+  final String? oauthCode;
+  final String? codeVerifier;
+  final String? providerUserId;
+  final String? fullName;
   final String? email;
   final String? phone;
   final String? avatarUrl;
 
   const SocialLoginRequest({
     required this.provider,
-    required this.providerUserId,
-    required this.fullName,
+    this.idToken,
+    this.accessToken,
+    this.oauthCode,
+    this.codeVerifier,
+    this.providerUserId,
+    this.fullName,
     this.email,
     this.phone,
     this.avatarUrl,
   });
 
   Map<String, dynamic> toJson() {
-    final trimmedEmail = email?.trim();
-    final trimmedPhone = phone?.trim();
-    final trimmedAvatar = avatarUrl?.trim();
+    final cleanIdToken = idToken?.trim();
+    final cleanAccess = accessToken?.trim();
+    final cleanOAuthCode = oauthCode?.trim();
+    final cleanVerifier = codeVerifier?.trim();
+    final cleanUserId = providerUserId?.trim();
+    final cleanName = fullName?.trim();
+    final cleanEmail = email?.trim();
+    final cleanPhone = phone?.trim();
+    final cleanAvatar = avatarUrl?.trim();
+
     return {
       'provider': provider.trim(),
-      'providerUserId': providerUserId.trim(),
-      'fullName': fullName.trim(),
-      if (trimmedEmail != null && trimmedEmail.isNotEmpty)
-        'email': trimmedEmail,
-      if (trimmedPhone != null && trimmedPhone.isNotEmpty)
-        'phone': trimmedPhone,
-      if (trimmedAvatar != null && trimmedAvatar.isNotEmpty)
-        'avatarUrl': trimmedAvatar,
+      if (cleanIdToken != null && cleanIdToken.isNotEmpty)
+        'idToken': cleanIdToken,
+      if (cleanAccess != null && cleanAccess.isNotEmpty)
+        'accessToken': cleanAccess,
+      if (cleanOAuthCode != null && cleanOAuthCode.isNotEmpty)
+        'oauthCode': cleanOAuthCode,
+      if (cleanVerifier != null && cleanVerifier.isNotEmpty)
+        'codeVerifier': cleanVerifier,
+      if (cleanUserId != null && cleanUserId.isNotEmpty)
+        'providerUserId': cleanUserId,
+      if (cleanName != null && cleanName.isNotEmpty) 'fullName': cleanName,
+      if (cleanEmail != null && cleanEmail.isNotEmpty) 'email': cleanEmail,
+      if (cleanPhone != null && cleanPhone.isNotEmpty) 'phone': cleanPhone,
+      if (cleanAvatar != null && cleanAvatar.isNotEmpty)
+        'avatarUrl': cleanAvatar,
     };
   }
 }
