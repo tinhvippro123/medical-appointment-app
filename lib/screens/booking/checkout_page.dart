@@ -55,23 +55,42 @@ class _CheckoutPageState extends State<CheckoutPage> {
       );
       if (!mounted) return;
       var finalOrder = order;
-      if (_paymentMethod == 'VNPay') {
+      if (_paymentMethod == 'VietQR' || _paymentMethod == 'VNPay') {
         final paymentResult = await Navigator.of(context).push<PaymentResult>(
           MaterialPageRoute(
             builder: (_) => OnlinePaymentPage(
               order: order,
+              method: _paymentMethod,
               repository: widget.paymentRepository,
             ),
           ),
         );
-        if (!mounted) return;
-        if (paymentResult != null && paymentResult.success) {
-          finalOrder = order.copyWith(
-            paymentMethod: paymentResult.paymentMethod,
-            paymentStatus: paymentResult.paymentStatus,
-            transactionId: paymentResult.transactionId,
-          );
+
+        if (paymentResult == null || !paymentResult.success) {
+          try {
+            await _repository.discardUnpaid(order.id);
+          } catch (_) {
+            // Best-effort dọn đơn tạm chưa thanh toán
+          }
+          if (!mounted) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Giao dịch chưa hoàn tất nên lịch hẹn tạm đã được hủy. Vui lòng xác nhận lại để đặt lịch.',
+                ),
+              ),
+            );
+          return;
         }
+
+        if (!mounted) return;
+        finalOrder = order.copyWith(
+          paymentMethod: paymentResult.paymentMethod,
+          paymentStatus: paymentResult.paymentStatus,
+          transactionId: paymentResult.transactionId,
+        );
       }
 
       Navigator.of(context).pushAndRemoveUntil(
@@ -181,7 +200,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         RadioListTile(
                           value: 'VNPay',
                           enabled: !_submitting,
-                          title: const Text('VNPay (Thẻ ATM / Ngân hàng nội địa)'),
+                          title: const Text('VNPay'),
+                        ),
+                        RadioListTile(
+                          value: 'VietQR',
+                          enabled: !_submitting,
+                          title: const Text('VietQR'),
                         ),
                       ],
                     ),
@@ -192,7 +216,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   child: Text(
                     _paymentMethod == 'Cash'
                         ? 'Thanh toán trực tiếp tại quầy tiếp nhận khi đến khám.'
-                        : 'Sau khi bấm xác nhận, cổng thanh toán VNPay sẽ mở ngay để bạn nhập thông tin thẻ ngân hàng và xác thực OTP.',
+                        : 'Sau khi bấm xác nhận, màn hình thanh toán $_paymentMethod sẽ mở ngay. Chỉ khi hoàn tất thanh toán phiếu khám mới được ghi nhận.',
                   ),
                 ),
               ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/network/api_exception.dart';
 import '../../core/theme/app_theme.dart';
@@ -53,8 +54,10 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
   bool _isSubmitting = false;
   String? _loadError;
 
+  VietQrSession? _vietQrSession;
   VnPaySession? _vnPaySession;
   PaymentResult? _paymentResult;
+
   _VnPayStep _step = _VnPayStep.cardInput;
   String _selectedBankCode = 'NCB';
 
@@ -62,6 +65,8 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
   String? _cardHolderError;
   String? _issueDateError;
   String? _otpError;
+
+  bool get _isVnPay => widget.method.trim().toLowerCase() == 'vnpay';
 
   @override
   void initState() {
@@ -89,9 +94,15 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
     });
 
     try {
-      final session = await _repository.createVnPay(widget.order.id);
-      if (!mounted) return;
-      setState(() => _vnPaySession = session);
+      if (_isVnPay) {
+        final session = await _repository.createVnPay(widget.order.id);
+        if (!mounted) return;
+        setState(() => _vnPaySession = session);
+      } else {
+        final session = await _repository.createVietQr(widget.order.id);
+        if (!mounted) return;
+        setState(() => _vietQrSession = session);
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _loadError = e.displayMessage);
@@ -99,7 +110,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
       if (!mounted) return;
       setState(
         () => _loadError =
-            'Không thể khởi tạo phiên thanh toán VNPay. Vui lòng kiểm tra kết nối mạng.',
+            'Không thể khởi tạo phiên thanh toán. Vui lòng kiểm tra kết nối mạng.',
       );
     } finally {
       if (mounted) {
@@ -124,6 +135,14 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
       if (bank.code == _selectedBankCode) return bank.name;
     }
     return _selectedBankCode;
+  }
+
+  Future<void> _copyText(String text, String label) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('Đã sao chép $label')));
   }
 
   void _fillSandboxSampleCard() {
@@ -152,11 +171,9 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
     if (digits.length < 16 || digits.length > 19) {
       cardErr = 'Vui lòng nhập số thẻ ATM hợp lệ (từ 16 đến 19 chữ số).';
     }
-
     if (holder.length < 3) {
       holderErr = 'Vui lòng nhập họ tên chủ thẻ (in hoa không dấu).';
     }
-
     final issueMatch = RegExp(r'^(0[1-9]|1[0-2])\/(\d{2})$').firstMatch(
       issueDate,
     );
@@ -182,7 +199,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
     });
   }
 
-  Future<void> _submitOtpAndPay() async {
+  Future<void> _submitVnPayOtp() async {
     if (_isSubmitting || _vnPaySession == null) return;
     FocusScope.of(context).unfocus();
 
@@ -199,28 +216,30 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
       return;
     }
 
-    setState(() {
-      _otpError = null;
-      _isSubmitting = true;
-    });
-
-    await _executeCallback(simulateFailure: false);
+    setState(() => _otpError = null);
+    await _completePayment(simulateFailure: false);
   }
 
-  Future<void> _cancelPayment() async {
-    if (_isSubmitting || _vnPaySession == null) return;
+  Future<void> _completePayment({required bool simulateFailure}) async {
+    if (_isSubmitting) return;
     FocusScope.of(context).unfocus();
     setState(() => _isSubmitting = true);
-    await _executeCallback(simulateFailure: true);
-  }
 
-  Future<void> _executeCallback({required bool simulateFailure}) async {
     try {
-      final session = _vnPaySession!;
-      final url = simulateFailure
-          ? session.callbackCancelUrl
-          : session.callbackSuccessUrl;
-      final result = await _repository.verifyVnPayCallbackUrl(url);
+      PaymentResult result;
+      if (_isVnPay && _vnPaySession != null) {
+        final url = simulateFailure
+            ? _vnPaySession!.callbackCancelUrl
+            : _vnPaySession!.callbackSuccessUrl;
+        result = await _repository.verifyVnPayCallbackUrl(url);
+      } else {
+        result = await _repository.confirmPayment(
+          orderId: widget.order.id,
+          provider: widget.method,
+          simulateFailure: simulateFailure,
+        );
+      }
+
       if (!mounted) return;
       setState(() => _paymentResult = result);
     } on ApiException catch (e) {
@@ -250,7 +269,103 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
     }
   }
 
-  Widget _buildGatewaySummaryCard(VnPaySession session) {
+  Widget _buildVietQrView(VietQrSession session) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xffdfedf8)),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'Quét mã QR bằng ứng dụng Ngân hàng',
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.text,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xffe2e8f0)),
+                ),
+                child: SizedBox.square(
+                  dimension: 210,
+                  child: QrImageView(
+                    key: const ValueKey('vietqr-code-widget'),
+                    data: session.qrData,
+                    backgroundColor: Colors.white,
+                    semanticsLabel: 'Mã thanh toán VietQR ${session.txnRef}',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              _InfoLine(label: 'Ngân hàng', value: session.bankName),
+              _InfoLine(
+                label: 'Số tài khoản',
+                value: session.accountNo,
+                onCopy: () => _copyText(session.accountNo, 'số tài khoản'),
+              ),
+              _InfoLine(label: 'Chủ tài khoản', value: session.accountName),
+              _InfoLine(
+                label: 'Số tiền',
+                value: session.amountFormatted,
+                highlight: true,
+              ),
+              _InfoLine(
+                label: 'Nội dung CK',
+                value: session.transferContent,
+                onCopy: () =>
+                    _copyText(session.transferContent, 'nội dung chuyển khoản'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        FilledButton.icon(
+          key: const ValueKey('payment-confirm-success-btn'),
+          onPressed: _isSubmitting
+              ? null
+              : () => _completePayment(simulateFailure: false),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(50),
+            backgroundColor: AppColors.primary,
+          ),
+          icon: const Icon(Icons.check_circle_outline_rounded),
+          label: Text(
+            _isSubmitting
+                ? 'Đang xác thực giao dịch...'
+                : 'Tôi đã chuyển khoản thành công',
+          ),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton(
+          key: const ValueKey('payment-simulate-fail-btn'),
+          onPressed: _isSubmitting
+              ? null
+              : () => _completePayment(simulateFailure: true),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(46),
+          ),
+          child: const Text('Hủy giao dịch / Chưa thanh toán'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVnPayGatewayHeader(VnPaySession session) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -299,7 +414,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Cổng thanh toán VNPay',
+                      'Cổng thanh toán VNPay Sandbox',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -335,11 +450,11 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
     );
   }
 
-  Widget _buildCardInputStep(VnPaySession session) {
+  Widget _buildVnPayCardStep(VnPaySession session) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildGatewaySummaryCard(session),
+        _buildVnPayGatewayHeader(session),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(18),
@@ -382,7 +497,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
               ),
               const SizedBox(height: 16),
               const Divider(height: 1),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Row(
                 children: [
                   const Expanded(
@@ -488,7 +603,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Thẻ test VNPay Sandbox: Số thẻ 9704198526191432198 · Chủ thẻ NGUYEN VAN A · Ngày phát hành 07/15 · OTP 123456',
+                        'Thẻ thử nghiệm VNPay Sandbox: Số thẻ 9704198526191432198 · Chủ thẻ NGUYEN VAN A · Ngày phát hành 07/15 · OTP 123456',
                         style: TextStyle(fontSize: 12, color: AppColors.muted),
                       ),
                     ),
@@ -512,7 +627,9 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
         const SizedBox(height: 10),
         OutlinedButton(
           key: const ValueKey('payment-simulate-fail-btn'),
-          onPressed: _isSubmitting ? null : _cancelPayment,
+          onPressed: _isSubmitting
+              ? null
+              : () => _completePayment(simulateFailure: true),
           style: OutlinedButton.styleFrom(
             minimumSize: const Size.fromHeight(46),
           ),
@@ -522,11 +639,11 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
     );
   }
 
-  Widget _buildOtpVerifyStep(VnPaySession session) {
+  Widget _buildVnPayOtpStep(VnPaySession session) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildGatewaySummaryCard(session),
+        _buildVnPayGatewayHeader(session),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(18),
@@ -548,7 +665,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Nhập mã xác thực OTP gồm 6 chữ số do $_selectedBankName gửi đến số điện thoại chủ thẻ.',
+                'Nhập mã OTP gồm 6 chữ số do $_selectedBankName gửi về số điện thoại chủ thẻ.',
                 style: const TextStyle(fontSize: 13, color: AppColors.muted),
               ),
               const SizedBox(height: 14),
@@ -613,7 +730,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
         const SizedBox(height: 20),
         FilledButton.icon(
           key: const ValueKey('payment-confirm-success-btn'),
-          onPressed: _isSubmitting ? null : _submitOtpAndPay,
+          onPressed: _isSubmitting ? null : _submitVnPayOtp,
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(50),
             backgroundColor: AppColors.primary,
@@ -644,7 +761,9 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
             Expanded(
               child: OutlinedButton(
                 key: const ValueKey('payment-simulate-fail-btn'),
-                onPressed: _isSubmitting ? null : _cancelPayment,
+                onPressed: _isSubmitting
+                    ? null
+                    : () => _completePayment(simulateFailure: true),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(46),
                   foregroundColor: const Color(0xffef4444),
@@ -778,7 +897,7 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Thanh toán VNPay · Đơn #${widget.order.id}'),
+        title: Text('Thanh toán ${widget.method} · Đơn #${widget.order.id}'),
       ),
       body: SafeArea(
         child: _paymentResult != null
@@ -808,10 +927,12 @@ class _OnlinePaymentPageState extends State<OnlinePaymentPage> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      if (_vnPaySession != null)
+                      if (_isVnPay && _vnPaySession != null)
                         _step == _VnPayStep.cardInput
-                            ? _buildCardInputStep(_vnPaySession!)
-                            : _buildOtpVerifyStep(_vnPaySession!),
+                            ? _buildVnPayCardStep(_vnPaySession!)
+                            : _buildVnPayOtpStep(_vnPaySession!)
+                      else if (_vietQrSession != null)
+                        _buildVietQrView(_vietQrSession!),
                     ],
                   ),
                 ),
@@ -847,18 +968,20 @@ class _InfoLine extends StatelessWidget {
     required this.label,
     required this.value,
     this.highlight = false,
+    this.onCopy,
   });
 
   final String label;
   final String value;
   final bool highlight;
+  final VoidCallback? onCopy;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             flex: 4,
@@ -870,14 +993,36 @@ class _InfoLine extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             flex: 6,
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: highlight ? 15.5 : 13.5,
-                fontWeight: highlight ? FontWeight.w800 : FontWeight.w600,
-                color: highlight ? AppColors.primary : AppColors.text,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: highlight ? 15.5 : 13.5,
+                      fontWeight: highlight ? FontWeight.w800 : FontWeight.w600,
+                      color: highlight ? AppColors.primary : AppColors.text,
+                    ),
+                  ),
+                ),
+                if (onCopy != null) ...[
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: onCopy,
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.copy_rounded,
+                        size: 15,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

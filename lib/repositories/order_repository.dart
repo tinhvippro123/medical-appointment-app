@@ -31,10 +31,23 @@ class OrderRepository {
     return Order.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<PagedResult<Order>> list({int page = 1}) async {
+  Future<PagedResult<Order>> list({
+    int page = 1,
+    String? search,
+    String? status,
+  }) async {
+    final trimmedSearch = search?.trim();
+    final trimmedStatus = status?.trim();
     final data = await _api.get(
       '/api/orders',
-      queryParameters: {'page': page, 'pageSize': 10},
+      queryParameters: {
+        'page': page,
+        'pageSize': 10,
+        if (trimmedSearch != null && trimmedSearch.isNotEmpty)
+          'search': trimmedSearch,
+        if (trimmedStatus != null && trimmedStatus.isNotEmpty)
+          'status': trimmedStatus,
+      },
     );
     return PagedResult<Order>.fromJson(
       data as Map<String, dynamic>,
@@ -45,5 +58,9 @@ class OrderRepository {
   Future<Order> detail(int id) async {
     final data = await _api.get('/api/orders/$id');
     return Order.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> discardUnpaid(int id) async {
+    await _api.delete('/api/orders/$id/unpaid');
   }
 }

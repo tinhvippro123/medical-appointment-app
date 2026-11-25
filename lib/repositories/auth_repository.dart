@@ -472,6 +472,52 @@ class AuthRepository {
     }
   }
 
+  Future<SocialLoginResult> socialLoginRequest(
+    SocialLoginRequest request,
+  ) async {
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('$baseUrl/api/auth/social-login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(request.toJson()),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      final data = _tryDecode(response.bodyBytes);
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          data is Map &&
+          data['token'] is String) {
+        final jwt = data['token'] as String;
+        await SessionHepler.saveToken(jwt);
+        return SocialLoginResult(
+          message: (data['message'] ?? 'Đăng nhập thành công!').toString(),
+          provider: (data['provider'] ?? request.provider).toString(),
+          isNewUser: data['isNewUser'] == true,
+        );
+      }
+
+      throw ApiException(
+        parseApiErrorMessage(
+          data,
+          response.statusCode,
+          fallback: 'Đăng nhập mạng xã hội không thành công.',
+        ),
+        errorCode: data is Map ? data['errorCode'] as String? : null,
+        statusCode: response.statusCode,
+      );
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw const ApiException('Kết nối quá thời gian. Vui lòng thử lại.');
+    } catch (_) {
+      throw const ApiException(
+        'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.',
+      );
+    }
+  }
+
   dynamic _tryDecode(List<int> bodyBytes) {
     if (bodyBytes.isEmpty) {
       return null;

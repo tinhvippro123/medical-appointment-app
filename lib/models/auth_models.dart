@@ -177,3 +177,50 @@ class UpdateMyProfileRequest {
     };
   }
 }
+
+class SocialLoginRequest {
+  final String provider;
+  final String providerUserId;
+  final String fullName;
+  final String? email;
+  final String? phone;
+  final String? avatarUrl;
+
+  const SocialLoginRequest({
+    required this.provider,
+    required this.providerUserId,
+    required this.fullName,
+    this.email,
+    this.phone,
+    this.avatarUrl,
+  });
+
+  Map<String, dynamic> toJson() {
+    final trimmedEmail = email?.trim();
+    final trimmedPhone = phone?.trim();
+    final trimmedAvatar = avatarUrl?.trim();
+    return {
+      'provider': provider.trim(),
+      'providerUserId': providerUserId.trim(),
+      'fullName': fullName.trim(),
+      if (trimmedEmail != null && trimmedEmail.isNotEmpty)
+        'email': trimmedEmail,
+      if (trimmedPhone != null && trimmedPhone.isNotEmpty)
+        'phone': trimmedPhone,
+      if (trimmedAvatar != null && trimmedAvatar.isNotEmpty)
+        'avatarUrl': trimmedAvatar,
+    };
+  }
+}
+
+class SocialLoginResult {
+  final String message;
+  final String provider;
+  final bool isNewUser;
+
+  const SocialLoginResult({
+    required this.message,
+    required this.provider,
+    this.isNewUser = false,
+  });
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../models/order.dart';
 import '../../models/paged_result.dart';
 import '../../models/payment_models.dart';
@@ -19,92 +20,236 @@ class OrderHistoryPage extends StatefulWidget {
 }
 
 class _OrderHistoryPageState extends State<OrderHistoryPage> {
+  static const List<(String?, String)> _statusFilters = [
+    (null, 'Tất cả'),
+    (OrderStatus.pending, 'Chờ xác nhận'),
+    (OrderStatus.confirmed, 'Đã xác nhận'),
+    (OrderStatus.completed, 'Hoàn thành'),
+    (OrderStatus.cancelled, 'Đã hủy'),
+  ];
+
   late final _repository = widget.repository ?? OrderRepository();
+  final TextEditingController _searchController = TextEditingController();
+
+  String _appliedSearch = '';
+  String? _selectedStatus;
+
   late Future<PagedResult<Order>> _orders = _repository.list();
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _loadPage(int page) {
-    setState(() => _orders = _repository.list(page: page));
+    setState(() {
+      _orders = _repository.list(
+        page: page,
+        search: _appliedSearch,
+        status: _selectedStatus,
+      );
+    });
+  }
+
+  void _applySearch() {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _appliedSearch = _searchController.text.trim();
+      _orders = _repository.list(
+        page: 1,
+        search: _appliedSearch,
+        status: _selectedStatus,
+      );
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _appliedSearch = '';
+      _orders = _repository.list(page: 1, status: _selectedStatus);
+    });
+  }
+
+  void _selectStatus(String? status) {
+    if (_selectedStatus == status) return;
+    setState(() {
+      _selectedStatus = status;
+      _orders = _repository.list(
+        page: 1,
+        search: _appliedSearch,
+        status: _selectedStatus,
+      );
+    });
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<PagedResult<Order>>(
-    future: _orders,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      final result = snapshot.data;
-      if (result == null) {
-        return _LoadError(
-          message: 'Không tải được lịch sử khám.',
-          onRetry: () => _loadPage(1),
-        );
-      }
-      if (result.items.isEmpty) {
-        return const Center(child: Text('Bạn chưa có lịch hẹn nào.'));
-      }
-      return Center(
+  Widget build(BuildContext context) {
+    final hasFilter = _appliedSearch.isNotEmpty || _selectedStatus != null;
+
+    return ColoredBox(
+      color: Colors.transparent,
+      child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 680),
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              for (final order in result.items)
-                Card(
-                  color: Colors.white,
-                  child: ListTile(
-                    title: Text(
-                      'Đơn #${order.id} · ${order.createdAtFormatted}',
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    key: const ValueKey('patient-order-search-field'),
+                    controller: _searchController,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _applySearch(),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Tìm mã đơn (#9), bác sĩ, chuyên khoa...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.white,
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          OrderStatusChip(status: order.status),
-                          Text('${order.appointmentCount} lịch hẹn'),
-                          Text(order.totalAmountFormatted),
+                          if (_searchController.text.isNotEmpty)
+                            IconButton(
+                              key: const ValueKey('patient-order-search-clear'),
+                              tooltip: 'Xóa tìm kiếm',
+                              onPressed: _clearSearch,
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                            ),
+                          IconButton(
+                            key: const ValueKey('patient-order-search-btn'),
+                            tooltip: 'Tìm đơn khám',
+                            onPressed: _applySearch,
+                            icon: const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => _OrderDetailPage(
-                          id: order.id,
-                          repository: _repository,
-                        ),
-                      ),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final (code, label) in _statusFilters)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              key: ValueKey(
+                                'patient-order-status-${code ?? 'ALL'}',
+                              ),
+                              label: Text(label),
+                              selected: _selectedStatus == code,
+                              onSelected: (_) => _selectStatus(code),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                ),
-              if (result.hasPreviousPage || result.hasNextPage)
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  children: [
-                    if (result.hasPreviousPage)
-                      TextButton(
-                        onPressed: () => _loadPage(result.page - 1),
-                        child: const Text('Trang trước'),
+                ],
+              ),
+            ),
+            Expanded(
+              child: FutureBuilder<PagedResult<Order>>(
+                future: _orders,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final result = snapshot.data;
+                  if (result == null) {
+                    return _LoadError(
+                      message: 'Không tải được lịch sử khám.',
+                      onRetry: () => _loadPage(1),
+                    );
+                  }
+                  if (result.items.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          hasFilter
+                              ? 'Không tìm thấy đơn đặt khám phù hợp.'
+                              : 'Bạn chưa có lịch hẹn nào.',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    Text('Trang ${result.page}'),
-                    if (result.hasNextPage)
-                      TextButton(
-                        onPressed: () => _loadPage(result.page + 1),
-                        child: const Text('Trang sau'),
-                      ),
-                  ],
-                ),
-            ],
-          ),
+                    );
+                  }
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    children: [
+                      for (final order in result.items)
+                        Card(
+                          color: Colors.white,
+                          child: ListTile(
+                            title: Text(
+                              'Đơn #${order.id} · ${order.createdAtFormatted}',
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  OrderStatusChip(status: order.status),
+                                  Text('${order.appointmentCount} lịch hẹn'),
+                                  Text(order.totalAmountFormatted),
+                                ],
+                              ),
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => _OrderDetailPage(
+                                  id: order.id,
+                                  repository: _repository,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (result.hasPreviousPage || result.hasNextPage)
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          children: [
+                            if (result.hasPreviousPage)
+                              TextButton(
+                                onPressed: () => _loadPage(result.page - 1),
+                                child: const Text('Trang trước'),
+                              ),
+                            Text('Trang ${result.page}'),
+                            if (result.hasNextPage)
+                              TextButton(
+                                onPressed: () => _loadPage(result.page + 1),
+                                child: const Text('Trang sau'),
+                              ),
+                          ],
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-      );
-    },
+      ),
+    ),
   );
+  }
 }
 
 class _OrderDetailPage extends StatefulWidget {
@@ -198,6 +343,7 @@ class _OrderInfoState extends State<OrderInfo> {
       MaterialPageRoute(
         builder: (_) => OnlinePaymentPage(
           order: _order,
+          method: method,
           repository: widget.paymentRepository,
         ),
       ),
@@ -263,7 +409,11 @@ class _OrderInfoState extends State<OrderInfo> {
                         key: const ValueKey('open-online-payment-btn'),
                         onPressed: _openOnlinePayment,
                         icon: const Icon(Icons.payment_rounded, size: 19),
-                        label: const Text('Thanh toán trực tuyến qua VNPay'),
+                        label: Text(
+                          _onlineMethod == null
+                              ? 'Thanh toán trực tuyến'
+                              : 'Thanh toán qua $_onlineMethod',
+                        ),
                       ),
                     ),
                 ],

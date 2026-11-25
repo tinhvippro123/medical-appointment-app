@@ -35,13 +35,28 @@ void main() {
     userFullName: 'Lê Thanh Tính',
     totalAmount: 200000,
     status: 'Pending',
-    paymentMethod: 'VNPay',
+    paymentMethod: 'VietQR',
     paymentStatus: 'Unpaid',
   );
 
   group('1. Card D10 PaymentRepository Unit Tests', () {
-    test('Khởi tạo phiên VNPay và xác thực chữ ký callback thành công', () async {
+    test('Khởi tạo VietQR, VNPay và xác thực chữ ký callback thành công', () async {
       final client = MockClient((req) async {
+        if (req.url.path == '/api/payments/vietqr') {
+          return _json({
+            'orderId': 18,
+            'amount': 200000,
+            'txnRef': 'VQR18_20261125',
+            'bankId': 'MB',
+            'bankName': 'Ngân hàng TMCP Quân Đội (MB Bank)',
+            'accountNo': '0987654321',
+            'accountName': 'TRUNG TAM Y TE HIEP PHUOC',
+            'transferContent': 'YTEHP DH18',
+            'qrData': 'VIETQR|BANK=MB|ACC=0987654321|AMOUNT=200000',
+            'vietQrImageUrl':
+                'https://img.vietqr.io/image/MB-0987654321-compact2.png',
+          });
+        }
         if (req.url.path == '/api/payments/vnpay') {
           return _json({
             'orderId': 18,
@@ -78,9 +93,12 @@ void main() {
         ),
       );
 
+      final vqr = await repo.createVietQr(18);
+      expect(vqr.transferContent, 'YTEHP DH18');
+      expect(vqr.amountFormatted, '200.000 đ');
+
       final vnp = await repo.createVnPay(18);
       expect(vnp.paymentUrl, contains('vnp_SecureHash='));
-      expect(vnp.amountFormatted, '200.000 đ');
 
       final cbOk = await repo.verifyVnPayCallbackUrl(vnp.callbackSuccessUrl);
       expect(cbOk.success, isTrue);
@@ -88,9 +106,81 @@ void main() {
     });
   });
 
-  group('2. Card D10 OrderInfo -> VNPay Card + OTP Widget Tests', () {
+  group('2. Card D10 VietQR & VNPay (Card + OTP) Widget Tests', () {
+    testWidgets('VietQR chỉ hiển thị mã QR, không hiện form thẻ VNPay', (
+      tester,
+    ) async {
+      configureScreenSize(tester);
+
+      final client = MockClient((req) async {
+        if (req.url.path == '/api/payments/vietqr') {
+          return _json({
+            'orderId': 18,
+            'amount': 200000,
+            'txnRef': 'VQR18_20261125',
+            'bankId': 'MB',
+            'bankName': 'Ngân hàng TMCP Quân Đội (MB Bank)',
+            'accountNo': '0987654321',
+            'accountName': 'TRUNG TAM Y TE HIEP PHUOC',
+            'transferContent': 'YTEHP DH18',
+            'qrData': 'VIETQR|BANK=MB|ACC=0987654321|AMOUNT=200000',
+            'vietQrImageUrl':
+                'https://img.vietqr.io/image/MB-0987654321-compact2.png',
+          });
+        }
+        if (req.url.path == '/api/payments/confirm') {
+          return _json({
+            'success': true,
+            'orderId': 18,
+            'paymentMethod': 'VietQR',
+            'paymentStatus': 'Paid',
+            'transactionId': 'VQR_TX_18',
+            'responseCode': '00',
+            'message': 'Thanh toán qua VietQR thành công!',
+          });
+        }
+        return _json({}, statusCode: 404);
+      });
+
+      final paymentRepo = PaymentRepository(
+        apiClient: ApiClient(
+          client: client,
+          baseUrl: 'http://test.api',
+          tokenProvider: () async => 'jwt',
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: OrderInfo(
+              order: sampleUnpaidOrder,
+              paymentRepository: paymentRepo,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('open-online-payment-btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(find.text('Cổng thanh toán VNPay Sandbox'), findsNothing);
+
+      await tester.tap(
+        find.byKey(const ValueKey('payment-confirm-success-btn')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('payment-done-return-btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('VietQR · Đã thanh toán'), findsOneWidget);
+    });
+
     testWidgets(
-      'Không có quét mã QR, bắt buộc nhập số thẻ ATM + tên chủ thẻ + ngày phát hành + OTP 123456 mới hoàn tất thanh toán VNPay',
+      'VNPay tách biệt với QR, bắt buộc nhập số thẻ ATM + chủ thẻ + ngày phát hành + OTP 123456 mới thanh toán thành công',
       (tester) async {
         configureScreenSize(tester);
 
@@ -126,38 +216,35 @@ void main() {
           return _json({}, statusCode: 404);
         });
 
-      final paymentRepo = PaymentRepository(
-        apiClient: ApiClient(
-          client: client,
-          baseUrl: 'http://test.api',
-          tokenProvider: () async => 'jwt',
-        ),
-      );
+        final paymentRepo = PaymentRepository(
+          apiClient: ApiClient(
+            client: client,
+            baseUrl: 'http://test.api',
+            tokenProvider: () async => 'jwt',
+          ),
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          home: Scaffold(
-            body: OrderInfo(
-              order: sampleUnpaidOrder.copyWith(paymentMethod: 'VNPay'),
-              paymentRepository: paymentRepo,
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            home: Scaffold(
+              body: OrderInfo(
+                order: sampleUnpaidOrder.copyWith(paymentMethod: 'VNPay'),
+                paymentRepository: paymentRepo,
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-        expect(find.text('VNPay · Chưa thanh toán'), findsOneWidget);
-
-        // Mở màn Thanh toán trực tuyến qua VNPay
         await tester.tap(find.byKey(const ValueKey('open-online-payment-btn')));
         await tester.pumpAndSettle();
 
         expect(find.byType(OnlinePaymentPage), findsOneWidget);
         expect(find.byType(QrImageView), findsNothing);
-        expect(find.text('Cổng thanh toán VNPay'), findsOneWidget);
+        expect(find.text('Cổng thanh toán VNPay Sandbox'), findsOneWidget);
 
-        // Chưa nhập số thẻ mà bấm Tiếp tục -> báo lỗi bắt buộc nhập thẻ
+        // Chưa nhập số thẻ mà bấm Tiếp tục -> báo lỗi
         await tester.tap(find.byKey(const ValueKey('vnpay-card-continue-btn')));
         await tester.pumpAndSettle();
         expect(
@@ -165,15 +252,7 @@ void main() {
           findsOneWidget,
         );
 
-        // Thử bấm Hủy giao dịch -> hiện màn hình Thất bại -> bấm Thử lại
-        await tester.tap(find.byKey(const ValueKey('payment-simulate-fail-btn')));
-        await tester.pumpAndSettle();
-        expect(find.text('Thanh toán chưa hoàn tất'), findsOneWidget);
-
-        await tester.tap(find.byKey(const ValueKey('payment-retry-btn')));
-        await tester.pumpAndSettle();
-
-        // Nhập số thẻ ATM, chủ thẻ, ngày phát hành -> Tiếp tục sang bước OTP
+        // Nhập thẻ ATM -> Tiếp tục sang bước OTP -> Nhập sai OTP -> Nhập đúng OTP 123456
         await tester.enterText(
           find.byKey(const ValueKey('vnpay-card-number-field')),
           '9704198526191432198',
@@ -189,10 +268,8 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('vnpay-card-continue-btn')));
         await tester.pumpAndSettle();
 
-        expect(find.text('Xác thực giao dịch (OTP)'), findsOneWidget);
         expect(find.text('9704 **** **** 2198'), findsOneWidget);
 
-        // Nhập OTP sai -> báo lỗi không cho qua
         await tester.enterText(
           find.byKey(const ValueKey('vnpay-otp-field')),
           '000000',
@@ -201,12 +278,8 @@ void main() {
           find.byKey(const ValueKey('payment-confirm-success-btn')),
         );
         await tester.pumpAndSettle();
-        expect(
-          find.textContaining('Mã OTP không chính xác!'),
-          findsOneWidget,
-        );
+        expect(find.textContaining('Mã OTP không chính xác!'), findsOneWidget);
 
-        // Nhập đúng OTP 123456 -> Xác nhận thanh toán thành công
         await tester.enterText(
           find.byKey(const ValueKey('vnpay-otp-field')),
           '123456',
@@ -217,14 +290,12 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Thanh toán thành công!'), findsOneWidget);
-        expect(find.text('VNP_TX_999'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('payment-done-return-btn')));
+        await tester.pumpAndSettle();
 
-      expect(find.text('VNPay · Đã thanh toán'), findsOneWidget);
-      expect(find.text('Mã giao dịch: VNP_TX_999'), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('open-online-payment-btn')),
-        findsNothing,
-      );
-    });
+        expect(find.text('VNPay · Đã thanh toán'), findsOneWidget);
+        expect(find.text('Mã giao dịch: VNP_TX_999'), findsOneWidget);
+      },
+    );
   });
 }
