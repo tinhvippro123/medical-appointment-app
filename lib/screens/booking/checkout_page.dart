@@ -55,12 +55,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
       );
       if (!mounted) return;
       var finalOrder = order;
-      if (_paymentMethod == 'VietQR' || _paymentMethod == 'VNPay') {
+      if (_paymentMethod == 'VNPay') {
         final paymentResult = await Navigator.of(context).push<PaymentResult>(
           MaterialPageRoute(
             builder: (_) => OnlinePaymentPage(
               order: order,
-              initialMethod: _paymentMethod,
               repository: widget.paymentRepository,
             ),
           ),
@@ -182,12 +181,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         RadioListTile(
                           value: 'VNPay',
                           enabled: !_submitting,
-                          title: const Text('VNPay'),
-                        ),
-                        RadioListTile(
-                          value: 'VietQR',
-                          enabled: !_submitting,
-                          title: const Text('VietQR'),
+                          title: const Text('VNPay (Thẻ ATM / Ngân hàng nội địa)'),
                         ),
                       ],
                     ),
@@ -198,7 +192,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   child: Text(
                     _paymentMethod == 'Cash'
                         ? 'Thanh toán trực tiếp tại quầy tiếp nhận khi đến khám.'
-                        : 'Sau khi bấm xác nhận, màn hình thanh toán $_paymentMethod sẽ mở ngay để bạn hoàn tất giao dịch.',
+                        : 'Sau khi bấm xác nhận, cổng thanh toán VNPay sẽ mở ngay để bạn nhập thông tin thẻ ngân hàng và xác thực OTP.',
                   ),
                 ),
               ],

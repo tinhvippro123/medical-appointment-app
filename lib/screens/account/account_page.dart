@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/community_logo.dart';
 import '../../helpers/session_helper.dart';
@@ -33,22 +32,18 @@ class AccountPage extends StatefulWidget {
 }
 
 class _AccountPageState extends State<AccountPage> {
-  static const String _notifPrefKey = 'pref_receive_notifications';
-
   late final AuthRepository _authRepo =
       widget.authRepository ?? AuthRepository();
 
   SessionUser? _user;
   bool _loading = true;
   bool _loggingOut = false;
-  bool _receiveNotifications = true;
   String? _successBannerMessage;
   Timer? _bannerTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadNotificationPref();
     if (widget.currentUser != null) {
       _user = widget.currentUser;
       _loading = false;
@@ -70,20 +65,6 @@ class _AccountPageState extends State<AccountPage> {
   void dispose() {
     _bannerTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadNotificationPref() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _receiveNotifications = prefs.getBool(_notifPrefKey) ?? true;
-    });
-  }
-
-  Future<void> _toggleNotification(bool value) async {
-    setState(() => _receiveNotifications = value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_notifPrefKey, value);
   }
 
   Future<void> _loadUser() async {
@@ -265,43 +246,6 @@ class _AccountPageState extends State<AccountPage> {
                               onTap: () => Navigator.of(
                                 context,
                               ).pushNamed('/patient-profiles'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-
-                        const _GroupHeading('Cài đặt'),
-                        const SizedBox(height: 8),
-                        _GroupCard(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                children: [
-                                  const _BlueIconBox(
-                                    icon: Icons.notifications_rounded,
-                                  ),
-                                  const SizedBox(width: 14),
-                                  const Expanded(
-                                    child: Text(
-                                      'Nhận thông báo',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.text,
-                                      ),
-                                    ),
-                                  ),
-                                  Switch(
-                                    value: _receiveNotifications,
-                                    activeThumbColor: const Color(0xff0b57d0),
-                                    onChanged: _toggleNotification,
-                                  ),
-                                ],
-                              ),
                             ),
                           ],
                         ),

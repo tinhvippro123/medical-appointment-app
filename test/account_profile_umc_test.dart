@@ -148,7 +148,7 @@ void main() {
       expect(find.text('037****855'), findsOneWidget);
       expect(find.text('Thông tin cá nhân'), findsOneWidget);
       expect(find.text('Thay đổi mật khẩu'), findsOneWidget);
-      expect(find.text('Nhận thông báo'), findsOneWidget);
+      expect(find.text('Nhận thông báo'), findsNothing);
       expect(find.text('Điều khoản dịch vụ'), findsOneWidget);
       expect(find.text('Phiên bản'), findsOneWidget);
 

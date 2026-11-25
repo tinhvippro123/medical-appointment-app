@@ -176,7 +176,6 @@ class _OrderInfoState extends State<OrderInfo> {
       MaterialPageRoute(
         builder: (_) => OnlinePaymentPage(
           order: _order,
-          initialMethod: _order.paymentMethod,
           repository: widget.paymentRepository,
         ),
       ),
@@ -242,7 +241,7 @@ class _OrderInfoState extends State<OrderInfo> {
                         key: const ValueKey('open-online-payment-btn'),
                         onPressed: _openOnlinePayment,
                         icon: const Icon(Icons.payment_rounded, size: 19),
-                        label: const Text('Thanh toán trực tuyến (VietQR / VNPay)'),
+                        label: const Text('Thanh toán trực tuyến qua VNPay'),
                       ),
                     ),
                 ],

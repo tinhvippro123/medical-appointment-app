@@ -35,35 +35,24 @@ void main() {
     userFullName: 'Lê Thanh Tính',
     totalAmount: 200000,
     status: 'Pending',
-    paymentMethod: 'VietQR',
+    paymentMethod: 'VNPay',
     paymentStatus: 'Unpaid',
   );
 
   group('1. Card D10 PaymentRepository Unit Tests', () {
-    test('Khởi tạo VietQR, VNPay và xử lý callback thành công', () async {
+    test('Khởi tạo phiên VNPay và xác thực chữ ký callback thành công', () async {
       final client = MockClient((req) async {
-        if (req.url.path == '/api/payments/vietqr') {
-          return _json({
-            'orderId': 18,
-            'amount': 200000,
-            'txnRef': 'VQR18_20261125',
-            'bankId': 'MB',
-            'bankName': 'Ngân hàng TMCP Quân Đội (MB Bank)',
-            'accountNo': '0987654321',
-            'accountName': 'TRUNG TAM Y TE HIEP PHUOC',
-            'transferContent': 'YTEHP DH18',
-            'qrData': 'VIETQR|BANK=MB|ACC=0987654321|AMOUNT=200000',
-            'vietQrImageUrl': 'https://img.vietqr.io/image/MB-0987654321-compact2.png',
-          });
-        }
         if (req.url.path == '/api/payments/vnpay') {
           return _json({
             'orderId': 18,
             'amount': 200000,
             'txnRef': 'VNP18_20261125',
-            'paymentUrl': 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_SecureHash=abc',
-            'callbackSuccessUrl': 'http://test.api/api/payments/callback?vnp_ResponseCode=00&vnp_SecureHash=abc',
-            'callbackCancelUrl': 'http://test.api/api/payments/callback?vnp_ResponseCode=24&vnp_SecureHash=def',
+            'paymentUrl':
+                'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_SecureHash=abc',
+            'callbackSuccessUrl':
+                'http://test.api/api/payments/callback?vnp_ResponseCode=00&vnp_SecureHash=abc',
+            'callbackCancelUrl':
+                'http://test.api/api/payments/callback?vnp_ResponseCode=24&vnp_SecureHash=def',
           });
         }
         if (req.url.path == '/api/payments/callback') {
@@ -89,12 +78,9 @@ void main() {
         ),
       );
 
-      final vqr = await repo.createVietQr(18);
-      expect(vqr.transferContent, 'YTEHP DH18');
-      expect(vqr.amountFormatted, '200.000 đ');
-
       final vnp = await repo.createVnPay(18);
       expect(vnp.paymentUrl, contains('vnp_SecureHash='));
+      expect(vnp.amountFormatted, '200.000 đ');
 
       final cbOk = await repo.verifyVnPayCallbackUrl(vnp.callbackSuccessUrl);
       expect(cbOk.success, isTrue);
@@ -102,35 +88,24 @@ void main() {
     });
   });
 
-  group('2. Card D10 OrderInfo -> OnlinePaymentPage Widget Tests', () {
+  group('2. Card D10 OrderInfo -> VNPay Card + OTP Widget Tests', () {
     testWidgets(
-      'Hiển thị QR VietQR, chuyển sang VNPay, xử lý kết quả Thất bại -> Thử lại -> Thành công và cập nhật Đã thanh toán',
+      'Không có quét mã QR, bắt buộc nhập số thẻ ATM + tên chủ thẻ + ngày phát hành + OTP 123456 mới hoàn tất thanh toán VNPay',
       (tester) async {
         configureScreenSize(tester);
 
         final client = MockClient((req) async {
-          if (req.url.path == '/api/payments/vietqr') {
-            return _json({
-              'orderId': 18,
-              'amount': 200000,
-              'txnRef': 'VQR18_20261125',
-              'bankId': 'MB',
-              'bankName': 'Ngân hàng TMCP Quân Đội (MB Bank)',
-              'accountNo': '0987654321',
-              'accountName': 'TRUNG TAM Y TE HIEP PHUOC',
-              'transferContent': 'YTEHP DH18',
-              'qrData': 'VIETQR|BANK=MB|ACC=0987654321|AMOUNT=200000',
-              'vietQrImageUrl': 'https://img.vietqr.io/image/MB-0987654321-compact2.png',
-            });
-          }
           if (req.url.path == '/api/payments/vnpay') {
             return _json({
               'orderId': 18,
               'amount': 200000,
               'txnRef': 'VNP18_20261125',
-              'paymentUrl': 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_SecureHash=abc',
-              'callbackSuccessUrl': 'http://test.api/api/payments/callback?vnp_ResponseCode=00&vnp_SecureHash=abc',
-              'callbackCancelUrl': 'http://test.api/api/payments/callback?vnp_ResponseCode=24&vnp_SecureHash=def',
+              'paymentUrl':
+                  'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_SecureHash=abc',
+              'callbackSuccessUrl':
+                  'http://test.api/api/payments/callback?vnp_ResponseCode=00&vnp_SecureHash=abc',
+              'callbackCancelUrl':
+                  'http://test.api/api/payments/callback?vnp_ResponseCode=24&vnp_SecureHash=def',
             });
           }
           if (req.url.path == '/api/payments/callback') {
@@ -172,34 +147,75 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('VietQR · Chưa thanh toán'), findsOneWidget);
+        expect(find.text('VNPay · Chưa thanh toán'), findsOneWidget);
 
-        // Mở màn Thanh toán trực tuyến
+        // Mở màn Thanh toán trực tuyến qua VNPay
         await tester.tap(find.byKey(const ValueKey('open-online-payment-btn')));
         await tester.pumpAndSettle();
 
         expect(find.byType(OnlinePaymentPage), findsOneWidget);
-        expect(find.byType(QrImageView), findsOneWidget);
-        expect(find.text('YTEHP DH18'), findsOneWidget);
+        expect(find.byType(QrImageView), findsNothing);
+        expect(find.text('Cổng thanh toán VNPay'), findsOneWidget);
 
-        // Chuyển sang tab Cổng VNPay
-        await tester.tap(find.byKey(const ValueKey('payment-tab-vnpay')));
+        // Chưa nhập số thẻ mà bấm Tiếp tục -> báo lỗi bắt buộc nhập thẻ
+        await tester.tap(find.byKey(const ValueKey('vnpay-card-continue-btn')));
         await tester.pumpAndSettle();
-        expect(find.text('Cổng thanh toán VNPay Sandbox'), findsOneWidget);
+        expect(
+          find.text('Vui lòng nhập số thẻ ATM hợp lệ (từ 16 đến 19 chữ số).'),
+          findsOneWidget,
+        );
 
-        // Thử bấm Hủy giao dịch -> hiện màn hình Thất bại
+        // Thử bấm Hủy giao dịch -> hiện màn hình Thất bại -> bấm Thử lại
         await tester.tap(find.byKey(const ValueKey('payment-simulate-fail-btn')));
         await tester.pumpAndSettle();
         expect(find.text('Thanh toán chưa hoàn tất'), findsOneWidget);
 
-        // Bấm Thử thanh toán lại -> Xác nhận thanh toán thành công
         await tester.tap(find.byKey(const ValueKey('payment-retry-btn')));
         await tester.pumpAndSettle();
 
+        // Nhập số thẻ ATM, chủ thẻ, ngày phát hành -> Tiếp tục sang bước OTP
+        await tester.enterText(
+          find.byKey(const ValueKey('vnpay-card-number-field')),
+          '9704198526191432198',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('vnpay-card-holder-field')),
+          'LE THANH TINH',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('vnpay-issue-date-field')),
+          '0715',
+        );
+        await tester.tap(find.byKey(const ValueKey('vnpay-card-continue-btn')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Xác thực giao dịch (OTP)'), findsOneWidget);
+        expect(find.text('9704 **** **** 2198'), findsOneWidget);
+
+        // Nhập OTP sai -> báo lỗi không cho qua
+        await tester.enterText(
+          find.byKey(const ValueKey('vnpay-otp-field')),
+          '000000',
+        );
         await tester.tap(
           find.byKey(const ValueKey('payment-confirm-success-btn')),
         );
         await tester.pumpAndSettle();
+        expect(
+          find.textContaining('Mã OTP không chính xác!'),
+          findsOneWidget,
+        );
+
+        // Nhập đúng OTP 123456 -> Xác nhận thanh toán thành công
+        await tester.enterText(
+          find.byKey(const ValueKey('vnpay-otp-field')),
+          '123456',
+        );
+        await tester.tap(
+          find.byKey(const ValueKey('payment-confirm-success-btn')),
+        );
+        await tester.pumpAndSettle();
+
         expect(find.text('Thanh toán thành công!'), findsOneWidget);
         expect(find.text('VNP_TX_999'), findsOneWidget);
 

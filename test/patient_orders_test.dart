@@ -15,16 +15,20 @@ import 'package:medical_appointment_app/screens/payment/online_payment_page.dart
 import 'package:qr_flutter/qr_flutter.dart';
 
 void main() {
-  testWidgets('Checkout tạo đơn và lịch sử hiển thị đúng mã phiếu', (
+  testWidgets('Checkout tạo đơn VNPay, nhập thẻ + OTP và lịch sử hiển thị đúng mã phiếu', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(1080, 1920);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     final requests = <http.Request>[];
     final order = {
       'id': 9,
       'createdAt': '2026-11-25T08:00:00Z',
       'totalAmount': 150000,
       'paymentStatus': 'Unpaid',
-      'paymentMethod': 'VietQR',
+      'paymentMethod': 'VNPay',
       'status': 'Pending',
       'totalItems': 1,
     };
@@ -47,27 +51,25 @@ void main() {
       requests.add(request);
       final data = switch (request.url.path) {
         '/api/orders/checkout' || '/api/orders/9' => detail,
-        '/api/payments/vietqr' => {
+        '/api/payments/vnpay' => {
           'orderId': 9,
           'amount': 150000,
-          'txnRef': 'VQR9_20261125',
-          'bankId': 'MB',
-          'bankName': 'Ngân hàng TMCP Quân Đội (MB Bank)',
-          'accountNo': '0987654321',
-          'accountName': 'TRUNG TAM Y TE HIEP PHUOC',
-          'transferContent': 'YTEHP DH9',
-          'qrData': 'VIETQR|BANK=MB|ACC=0987654321|AMOUNT=150000',
-          'vietQrImageUrl':
-              'https://img.vietqr.io/image/MB-0987654321-compact2.png',
+          'txnRef': 'VNP9_20261125',
+          'paymentUrl':
+              'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_SecureHash=abc',
+          'callbackSuccessUrl':
+              'http://test.api/api/payments/callback?vnp_ResponseCode=00&vnp_SecureHash=abc',
+          'callbackCancelUrl':
+              'http://test.api/api/payments/callback?vnp_ResponseCode=24&vnp_SecureHash=def',
         },
-        '/api/payments/confirm' => {
+        '/api/payments/callback' => {
           'success': true,
           'orderId': 9,
-          'paymentMethod': 'VietQR',
+          'paymentMethod': 'VNPay',
           'paymentStatus': 'Paid',
-          'transactionId': 'VQR9_PAID',
+          'transactionId': 'VNP9_PAID',
           'responseCode': '00',
-          'message': 'Thanh toán VietQR thành công!',
+          'message': 'Thanh toán qua VNPay thành công!',
         },
         '/api/orders' => {
           'items': [
@@ -142,15 +144,20 @@ void main() {
 
     await tester.tap(find.text('Checkout'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('VietQR'));
-    await tester.tap(find.text('VietQR'));
+    expect(find.text('VietQR'), findsNothing);
+
+    final vnpayOption = find.textContaining('VNPay');
+    await tester.ensureVisible(vnpayOption);
+    await tester.tap(vnpayOption);
+
     final confirm = find.text('Xác nhận đặt lịch');
     await tester.ensureVisible(confirm);
     await tester.tap(confirm);
     await tester.pumpAndSettle();
+
     expect(requests.first.method, 'POST');
     expect(jsonDecode(requests.first.body), {
-      'paymentMethod': 'VietQR',
+      'paymentMethod': 'VNPay',
       'appointment': {
         'doctorId': 15,
         'patientProfileId': 12,
@@ -159,26 +166,27 @@ void main() {
       },
     });
 
-    // Mở thẳng màn hình quét mã VietQR ngay khi bấm Xác nhận đặt lịch
+    // Mở thẳng cổng thanh toán VNPay -> nhập thẻ ATM + OTP 123456
     expect(find.byType(OnlinePaymentPage), findsOneWidget);
-    expect(find.text('YTEHP DH9'), findsOneWidget);
-    final payConfirmBtn = find.byKey(
-      const ValueKey('payment-confirm-success-btn'),
+    await tester.tap(find.byKey(const ValueKey('vnpay-fill-sample-btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('vnpay-card-continue-btn')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('vnpay-otp-field')),
+      '123456',
     );
-    await tester.ensureVisible(payConfirmBtn);
+    await tester.tap(find.byKey(const ValueKey('payment-confirm-success-btn')));
     await tester.pumpAndSettle();
-    await tester.tap(payConfirmBtn);
-    await tester.pumpAndSettle();
+
     expect(find.text('Thanh toán thành công!'), findsOneWidget);
-    final doneReturnBtn = find.byKey(const ValueKey('payment-done-return-btn'));
-    await tester.ensureVisible(doneReturnBtn);
-    await tester.pumpAndSettle();
-    await tester.tap(doneReturnBtn);
+    await tester.tap(find.byKey(const ValueKey('payment-done-return-btn')));
     await tester.pumpAndSettle();
 
     expect(find.text('Đặt lịch thành công!'), findsOneWidget);
     expect(find.text('Phòng P402'), findsOneWidget);
-    expect(find.text('VietQR · Đã thanh toán'), findsOneWidget);
+    expect(find.text('VNPay · Đã thanh toán'), findsOneWidget);
 
     await tester.tap(find.text('Về trang chủ'));
     await tester.pumpAndSettle();
@@ -195,8 +203,8 @@ void main() {
     );
     expect(requests.map((r) => r.url.path), [
       '/api/orders/checkout',
-      '/api/payments/vietqr',
-      '/api/payments/confirm',
+      '/api/payments/vnpay',
+      '/api/payments/callback',
       '/api/orders',
       '/api/orders/9',
     ]);
