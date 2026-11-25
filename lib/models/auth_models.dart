@@ -105,3 +105,75 @@ class ResetPasswordRequest {
     'newPassword': newPassword,
   };
 }
+
+class MyProfile {
+  final int id;
+  final String fullName;
+  final String phone;
+  final String? email;
+  final String roleKey;
+  final String roleName;
+  final DateTime? dateOfBirth;
+  final String? gender;
+
+  const MyProfile({
+    required this.id,
+    required this.fullName,
+    required this.phone,
+    this.email,
+    required this.roleKey,
+    required this.roleName,
+    this.dateOfBirth,
+    this.gender,
+  });
+
+  factory MyProfile.fromJson(Map<String, dynamic> json) {
+    final rawDob = json['dateOfBirth']?.toString().trim();
+    return MyProfile(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      fullName: (json['fullName'] ?? '').toString(),
+      phone: (json['phone'] ?? '').toString(),
+      email: json['email']?.toString(),
+      roleKey: (json['roleKey'] ?? 'PATIENT').toString(),
+      roleName: (json['roleName'] ?? 'Bệnh nhân').toString(),
+      dateOfBirth: rawDob != null && rawDob.isNotEmpty
+          ? DateTime.tryParse(rawDob)
+          : null,
+      gender: json['gender']?.toString(),
+    );
+  }
+}
+
+class UpdateMyProfileRequest {
+  final String fullName;
+  final String? email;
+  final DateTime? dateOfBirth;
+  final String? gender;
+
+  const UpdateMyProfileRequest({
+    required this.fullName,
+    this.email,
+    this.dateOfBirth,
+    this.gender,
+  });
+
+  Map<String, dynamic> toJson() {
+    final trimmedEmail = email?.trim();
+    final trimmedGender = gender?.trim();
+    String? dobIso;
+    if (dateOfBirth != null) {
+      final y = dateOfBirth!.year.toString().padLeft(4, '0');
+      final m = dateOfBirth!.month.toString().padLeft(2, '0');
+      final d = dateOfBirth!.day.toString().padLeft(2, '0');
+      dobIso = '$y-$m-$d';
+    }
+    return {
+      'fullName': fullName.trim(),
+      if (trimmedEmail != null && trimmedEmail.isNotEmpty)
+        'email': trimmedEmail,
+      'dateOfBirth': ?dobIso,
+      if (trimmedGender != null && trimmedGender.isNotEmpty)
+        'gender': trimmedGender,
+    };
+  }
+}
