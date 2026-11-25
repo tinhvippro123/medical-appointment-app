@@ -31,6 +31,26 @@ class DoctorRepository {
     return Doctor.fromJson(res as Map<String, dynamic>);
   }
 
+  /// Lấy danh sách bác sĩ cùng chuyên khoa (GET /api/doctors/{id}/related)
+  Future<PagedResult<Doctor>> getRelatedDoctors(
+    int id, {
+    int page = 1,
+    int pageSize = 5,
+  }) async {
+    final res = await _apiClient.get(
+      '/api/doctors/$id/related',
+      queryParameters: {
+        'page': page,
+        'pageSize': pageSize,
+      },
+    );
+
+    return PagedResult<Doctor>.fromJson(
+      res as Map<String, dynamic>,
+      (j) => Doctor.fromJson(j as Map<String, dynamic>),
+    );
+  }
+
   /// Tìm kiếm bác sĩ theo từ khóa và chuyên khoa có phân trang (GET /api/doctors/search)
   Future<PagedResult<Doctor>> searchDoctors({
     String? keyword,
