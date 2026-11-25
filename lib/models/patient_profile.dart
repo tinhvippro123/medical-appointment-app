@@ -5,6 +5,12 @@ class PatientProfile {
   final DateTime? dateOfBirth;
   final String gender;
   final String relationship;
+  final String? identityCardNumber;
+  final String? healthInsuranceNumber;
+  final String? ethnicity;
+  final String? occupation;
+  final String? phone;
+  final String? address;
 
   const PatientProfile({
     required this.id,
@@ -12,6 +18,12 @@ class PatientProfile {
     this.dateOfBirth,
     this.gender = '',
     required this.relationship,
+    this.identityCardNumber,
+    this.healthInsuranceNumber,
+    this.ethnicity,
+    this.occupation,
+    this.phone,
+    this.address,
   });
 
   /// Nhãn hiển thị gọn trong dropdown: "Nguyễn Văn A (Bản thân)"
@@ -34,6 +46,12 @@ class PatientProfile {
         : null,
     gender: (json['gender'] ?? '').toString(),
     relationship: (json['relationship'] ?? '').toString(),
+    identityCardNumber: json['identityCardNumber']?.toString(),
+    healthInsuranceNumber: json['healthInsuranceNumber']?.toString(),
+    ethnicity: json['ethnicity']?.toString(),
+    occupation: json['occupation']?.toString(),
+    phone: json['phone']?.toString(),
+    address: json['address']?.toString(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -42,5 +60,11 @@ class PatientProfile {
     'dateOfBirth': dateOfBirth?.toIso8601String(),
     'gender': gender,
     'relationship': relationship,
+    'identityCardNumber': identityCardNumber,
+    'healthInsuranceNumber': healthInsuranceNumber,
+    'ethnicity': ethnicity,
+    'occupation': occupation,
+    'phone': phone,
+    'address': address,
   };
 }

@@ -438,6 +438,14 @@ void main() {
 
     testWidgets('Trạng thái 4: Thành công hiển thị đầy đủ thông tin, phòng khám, lịch làm việc', (tester) async {
       final mockClient = MockClient((request) async {
+        if (request.url.path == '/api/doctors/1/day-offs') {
+          expect(request.url.queryParameters['from'], isNotNull);
+          expect(request.url.queryParameters['to'], isNotNull);
+          return http.Response(
+            '[{"id":1,"doctorId":1,"date":"2026-12-02"}]',
+            200,
+          );
+        }
         if (request.url.path == '/api/doctors/1') {
           return http.Response.bytes(
             utf8.encode(jsonEncode(sampleDoctorDetailJson(
@@ -500,6 +508,8 @@ void main() {
       // Section lịch làm việc
       expect(find.text('Thứ 2'), findsOneWidget);
       expect(find.text('07:00-11:30'), findsOneWidget);
+      expect(find.text('Lịch nghỉ sắp tới'), findsOneWidget);
+      expect(find.text('Thứ 4 · 02/12/2026'), findsOneWidget);
 
       // Nút Đặt lịch khám
       expect(find.text('Đặt lịch khám'), findsOneWidget);

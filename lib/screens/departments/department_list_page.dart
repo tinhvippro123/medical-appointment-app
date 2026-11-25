@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../models/department.dart';
+import '../../models/order.dart';
 import '../../models/patient_profile.dart';
 import '../../repositories/department_repository.dart';
 import '../booking/booking_date_page.dart';
@@ -29,10 +30,8 @@ class _DepartmentListPageState extends State<DepartmentListPage> {
     }
     navigator.push(
       MaterialPageRoute(
-        builder: (_) => BookingDatePage(
-          department: department,
-          patient: patient,
-        ),
+        builder: (_) =>
+            BookingDatePage(department: department, patient: patient),
       ),
     );
   }
@@ -51,7 +50,11 @@ class _DepartmentListPageState extends State<DepartmentListPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Danh sách chuyên khoa')),
+    appBar: AppBar(
+      title: Text(
+        widget.patient == null ? 'Danh sách chuyên khoa' : 'Chọn chuyên khoa',
+      ),
+    ),
     body: FutureBuilder<List<Department>>(
       future: _departments,
       builder: (context, snapshot) {
@@ -89,6 +92,7 @@ class _DepartmentListPageState extends State<DepartmentListPage> {
             ),
           );
         }
+        final textScaler = MediaQuery.textScalerOf(context);
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 960),
@@ -98,11 +102,10 @@ class _DepartmentListPageState extends State<DepartmentListPage> {
                 padding: const EdgeInsets.all(16),
                 physics: const AlwaysScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 240,
+                  maxCrossAxisExtent: textScaler.scale(240),
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  mainAxisExtent:
-                      112 + MediaQuery.textScalerOf(context).scale(16) * 3,
+                  mainAxisExtent: 146 + textScaler.scale(18) * 5,
                 ),
                 itemCount: items.length,
                 itemBuilder: (context, index) {
@@ -110,6 +113,7 @@ class _DepartmentListPageState extends State<DepartmentListPage> {
                   return _DepartmentCard(
                     name: department.name,
                     imageUrl: _repository.imageUrl(department.imageUrl),
+                    consultationFee: department.consultationFee,
                     onTap: () => _openDepartment(department),
                   );
                 },
@@ -126,11 +130,13 @@ class _DepartmentCard extends StatelessWidget {
   const _DepartmentCard({
     required this.name,
     required this.imageUrl,
+    required this.consultationFee,
     required this.onTap,
   });
 
   final String name;
   final String? imageUrl;
+  final double? consultationFee;
   final VoidCallback onTap;
 
   @override
@@ -143,18 +149,23 @@ class _DepartmentCard extends StatelessWidget {
       ),
     );
     final url = imageUrl;
+    final fee = consultationFee;
     return Card(
       margin: EdgeInsets.zero,
       color: Colors.white,
       elevation: 0,
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xffdce9f5)),
+      ),
       child: InkWell(
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Ink(
-              height: 92,
+              height: 116,
               color: AppColors.light,
               child: url == null
                   ? placeholder
@@ -167,22 +178,34 @@ class _DepartmentCard extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                child: Center(
-                  child: Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.dark,
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark,
+                      ),
                     ),
-                  ),
+                    Text(
+                      fee == null
+                          ? 'Phí khám chưa cập nhật'
+                          : 'Phí khám: ${Order.formatMoney(fee)}',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.dark,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

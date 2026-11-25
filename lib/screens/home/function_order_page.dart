@@ -166,7 +166,7 @@ class _FunctionOrderPageState extends State<FunctionOrderPage> {
                                               : null,
                                           child: HealthcareServiceCard(
                                             key: ValueKey(
-                                              'reorder-${items[index].asset}',
+                                              'reorder-${items[index].orderKey}',
                                             ),
                                             service: items[index],
                                             onTap: () {},

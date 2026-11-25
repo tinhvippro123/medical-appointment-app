@@ -68,7 +68,6 @@ class _BookingPageState extends State<BookingPage> {
   String? _profilesError;
   List<PatientProfile> _profiles = const [];
   int? _selectedProfileId;
-  int? _insuredProfileId;
 
   bool _openingReview = false;
 
@@ -355,10 +354,6 @@ class _BookingPageState extends State<BookingPage> {
               date: date,
               slot: slot,
               note: note,
-              hasHealthInsurance: _insuredProfileId == profile.id,
-              onHealthInsuranceChanged: (checked) {
-                _insuredProfileId = checked ? profile.id : null;
-              },
             ),
           ),
         );

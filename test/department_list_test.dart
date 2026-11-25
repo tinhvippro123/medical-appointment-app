@@ -63,6 +63,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(GridView), findsOneWidget);
     expect(find.text('Tim mạch'), findsOneWidget);
+    expect(find.text('Phí khám chưa cập nhật'), findsNWidgets(2));
     await tester.tap(find.text('Nhi khoa'));
     await tester.pumpAndSettle();
     expect(find.text('Nhi khoa'), findsOneWidget);
@@ -81,15 +82,34 @@ void main() {
   testWidgets('Đặt khám từ chuyên khoa mở lịch trước khi chọn bác sĩ', (
     tester,
   ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 720);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
     final client = MockClient(
       (_) async => http.Response.bytes(
-        utf8.encode('[{"id":7,"name":"Nhi khoa"}]'),
+        utf8.encode(
+          jsonEncode([
+            {
+              'id': 7,
+              'name': 'Nhi khoa',
+              'consultationFee': 50000,
+              'imageUrl': '/images/departments/nhi.png',
+            },
+          ]),
+        ),
         200,
       ),
     );
     addTearDown(client.close);
     await tester.pumpWidget(
       MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(1.6)),
+          child: child!,
+        ),
         home: DepartmentListPage(
           repository: DepartmentRepository(
             client: client,
@@ -105,6 +125,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.text('Chọn chuyên khoa'), findsOneWidget);
+    expect(find.text('Phí khám: 50.000 đ'), findsOneWidget);
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(
+      (image.image as NetworkImage).url,
+      'http://test.api/images/departments/nhi.png',
+    );
+    expect(tester.takeException(), isNull);
     await tester.tap(find.text('Nhi khoa'));
     await tester.pumpAndSettle();
 

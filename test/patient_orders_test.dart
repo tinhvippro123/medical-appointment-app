@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,6 +35,7 @@ void main() {
         {
           'id': 83,
           'doctorFullName': 'Mai Thị Minh Tâm',
+          'departmentName': 'Cơ xương khớp',
           'roomNumber': 'P402',
           'patientProfileFullName': 'Trần Minh An',
           'appointmentDate': '2026-11-27',
@@ -116,7 +118,6 @@ void main() {
                         date: DateTime(2026, 11, 27),
                         slot: '09:00-10:00',
                         note: '',
-                        hasHealthInsurance: false,
                         repository: repo,
                         paymentRepository: paymentRepo,
                       ),
@@ -183,19 +184,56 @@ void main() {
     expect(find.text('Phòng P402'), findsOneWidget);
     expect(find.text('VietQR · Đã thanh toán'), findsOneWidget);
 
+    await tester.scrollUntilVisible(find.text('Về trang chủ'), 150);
     await tester.tap(find.text('Về trang chủ'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lịch sử'));
     await tester.pumpAndSettle();
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 740);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpAndSettle();
     expect(find.text('1 lịch hẹn'), findsOneWidget);
     await tester.tap(find.textContaining('Đơn #9'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mã QR'));
-    await tester.pumpAndSettle();
+    expect(find.text('PHIẾU KHÁM BỆNH'), findsOneWidget);
+    expect(find.text('Cơ xương khớp'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('27/11/2026'), findsOneWidget);
+    expect(find.text('09:00-10:00'), findsOneWidget);
     expect(
       tester.widget<QrImageView>(find.byType(QrImageView)).semanticsLabel,
       'Mã QR TICKET-83',
     );
+    final qrButton = find.text('Mã QR').hitTestable();
+    await tester.scrollUntilVisible(qrButton, 120);
+    await tester.pumpAndSettle();
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    final qrPosition = tester.getCenter(qrButton);
+    await mouse.addPointer(location: qrPosition);
+    await tester.pumpAndSettle();
+    await mouse.down(qrPosition);
+    await mouse.up();
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<QrImageView>(
+            find.descendant(
+              of: find.byType(AlertDialog),
+              matching: find.byType(QrImageView),
+            ),
+          )
+          .semanticsLabel,
+      'Mã QR TICKET-83',
+    );
+    tester.view.physicalSize = const Size(320, 480);
+    await tester.pumpAndSettle();
+    await mouse.moveTo(tester.getCenter(find.text('Đóng')));
+    await tester.tap(find.text('Đóng'), kind: PointerDeviceKind.mouse);
+    await tester.pumpAndSettle();
+    await mouse.removePointer();
+    expect(tester.takeException(), isNull);
     expect(requests.map((r) => r.url.path), [
       '/api/orders/checkout',
       '/api/payments/vietqr',

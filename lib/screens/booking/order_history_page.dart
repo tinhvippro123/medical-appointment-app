@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/order.dart';
 import '../../models/paged_result.dart';
@@ -8,6 +7,7 @@ import '../../repositories/order_repository.dart';
 import '../../repositories/payment_repository.dart';
 import '../admin/orders/widgets/order_status_chip.dart';
 import '../payment/online_payment_page.dart';
+import 'widgets/appointment_ticket.dart';
 
 class OrderHistoryPage extends StatefulWidget {
   const OrderHistoryPage({super.key, this.repository});
@@ -122,7 +122,7 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Chi tiết lịch khám')),
+    appBar: AppBar(title: const Text('Phiếu khám bệnh')),
     body: SafeArea(
       child: FutureBuilder<Order>(
         future: _order,
@@ -275,71 +275,13 @@ class _OrderInfoState extends State<OrderInfo> {
               ),
             ),
             for (final item in _order.orderDetails)
-              Card(
-                color: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'STT #${item.queueNumber} · ${item.doctorFullName}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(item.roomDisplay),
-                      Text(
-                        '${item.appointmentDateFormatted} · ${item.timeSlot}',
-                      ),
-                      Text('Người khám: ${item.patientProfileFullName}'),
-                      Text('Phí khám: ${item.feeFormatted}'),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        onPressed: () => _showTicketQr(context, item.id),
-                        icon: const Icon(Icons.qr_code_2),
-                        label: const Text('Mã QR'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              AppointmentTicket(appointment: item),
             if (widget.action != null) ...[
               const SizedBox(height: 12),
               widget.action!,
             ],
           ],
         ),
-      ),
-    );
-  }
-
-  void _showTicketQr(BuildContext context, int id) {
-    final code = 'TICKET-$id';
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Mã QR lịch khám'),
-        scrollable: true,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox.square(
-              dimension: 200,
-              child: QrImageView(
-                data: code,
-                backgroundColor: Colors.white,
-                semanticsLabel: 'Mã QR $code',
-              ),
-            ),
-            SelectableText(code),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
-          ),
-        ],
       ),
     );
   }

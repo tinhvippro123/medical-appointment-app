@@ -8,21 +8,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:medical_appointment_app/main.dart';
 import 'package:medical_appointment_app/screens/account/account_page.dart';
 import 'package:medical_appointment_app/screens/booking/order_history_page.dart';
+import 'package:medical_appointment_app/screens/departments/department_list_page.dart';
 import 'package:medical_appointment_app/screens/home/home_page.dart';
+import 'package:medical_appointment_app/screens/home/usage_guide_page.dart';
 import 'package:medical_appointment_app/screens/home/widgets/home_header.dart';
+import 'package:medical_appointment_app/screens/patient_profiles/patient_profiles_page.dart';
 
 void main() {
+  final homeBooking = find.descendant(
+    of: find.byType(HealthcareFunctionsPanel),
+    matching: find.text('Đặt khám'),
+  );
   setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('Menu dưới có Trang chủ ở giữa và chuyển đủ 5 mục', (
     tester,
   ) async {
     await tester.pumpWidget(const MyApp(home: HomePage()));
     await tester.pumpAndSettle();
-    for (final index in [0, 3]) {
-      await tester.tap(find.byKey(ValueKey('bottom-nav-$index')));
-      await tester.pumpAndSettle();
-      expect(find.byType(FeatureMessage).hitTestable(), findsOneWidget);
-    }
+    final bookingTab = find.byKey(const ValueKey('bottom-nav-0'));
+    expect(
+      find.descendant(of: bookingTab, matching: find.text('Đặt khám')),
+      findsOneWidget,
+    );
+    expect(find.text('Hóa đơn'), findsNothing);
+    await tester.tap(bookingTab);
+    await tester.pumpAndSettle();
+    expect(find.text('Chọn hồ sơ'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('bottom-nav-3')));
+    await tester.pumpAndSettle();
+    expect(find.byType(PatientProfilesPage), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('bottom-nav-1')));
     await tester.pumpAndSettle();
     expect(find.byType(OrderHistoryPage).hitTestable(), findsOneWidget);
@@ -38,6 +54,12 @@ void main() {
       ),
       findsOneWidget,
     );
+    final profileShortcut = find.text('Hồ sơ\nbệnh nhân');
+    await tester.ensureVisible(profileShortcut);
+    await tester.tap(profileShortcut);
+    await tester.pumpAndSettle();
+    expect(find.byType(PatientProfilesPage).hitTestable(), findsOneWidget);
+    expect(find.byType(FeaturePlaceholder), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
@@ -58,7 +80,7 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const MyApp(home: HomePage()));
     await tester.pumpAndSettle();
-    expect(find.text('Đặt khám'), findsOneWidget);
+    expect(homeBooking, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   testWidgets('Tìm kiếm không dấu và sắp xếp chức năng', (tester) async {
@@ -72,9 +94,18 @@ void main() {
         of: find.byType(HealthcareFunctionsPanel),
         matching: find.text('Hóa đơn'),
       ),
+      findsNothing,
+    );
+    await tester.enterText(find.byType(TextField), 'ho so benh nhan');
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byType(HealthcareFunctionsPanel),
+        matching: find.text('Hồ sơ\nbệnh nhân'),
+      ),
       findsOneWidget,
     );
-    expect(find.text('Đặt khám'), findsNothing);
+    expect(homeBooking, findsNothing);
     await tester.tap(find.byTooltip('Đóng tìm kiếm'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Sắp xếp chức năng'));
@@ -84,7 +115,7 @@ void main() {
       tester.getCenter(find.text('Đặt khám')),
     );
     await tester.pump(const Duration(milliseconds: 600));
-    await gesture.moveTo(tester.getCenter(find.text('Hóa đơn')));
+    await gesture.moveTo(tester.getCenter(find.text('Hồ sơ\nbệnh nhân')));
     await tester.pump(const Duration(milliseconds: 300));
     await gesture.up();
     await tester.pumpAndSettle();
@@ -150,8 +181,8 @@ void main() {
       const Offset(0, -300),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Đặt khám'));
-    await tester.tap(find.text('Đặt khám'));
+    await tester.ensureVisible(homeBooking);
+    await tester.tap(homeBooking);
     await tester.pumpAndSettle();
     expect(find.text('Chọn hồ sơ'), findsOneWidget);
     await tester.pageBack();
@@ -161,6 +192,52 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Địa chỉ'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('Trang chủ mở hướng dẫn sử dụng và đi tiếp đến đặt khám', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MyApp(home: HomePage()));
+    await tester.pumpAndSettle();
+    final guide = find.text('Hướng dẫn\nsử dụng');
+    await tester.ensureVisible(guide);
+    await tester.tap(guide);
+    await tester.pumpAndSettle();
+    expect(find.byType(UsageGuidePage), findsOneWidget);
+
+    await tester.tap(find.text('Đặt lịch khám'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Chọn chuyên khoa, ngày khám'), findsOneWidget);
+
+    final booking = find.text('Đặt khám ngay');
+    await tester.ensureVisible(booking);
+    await tester.tap(booking);
+    await tester.pumpAndSettle();
+    expect(find.text('Chọn hồ sơ'), findsOneWidget);
+  });
+  testWidgets('Ô Bác sĩ mở danh sách chuyên khoa để xem bác sĩ', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      FunctionOrderStore.key: ['Bác sĩ'],
+    });
+    await tester.pumpWidget(const MyApp(home: HomePage()));
+    await tester.pumpAndSettle();
+    final doctors = find.text('Bác sĩ');
+    final doctorCard = tester.widget<HealthcareServiceCard>(
+      find.ancestor(of: doctors, matching: find.byType(HealthcareServiceCard)),
+    );
+    expect(doctorCard.service.asset, 'assets/images/services/doctor.png');
+    expect((await FunctionOrderStore().load()).first.title, 'Bác sĩ');
+    expect(tester.takeException(), isNull);
+    await tester.ensureVisible(doctors);
+    await tester.tap(doctors);
+    await tester.pumpAndSettle();
+
+    final departments = tester.widget<DepartmentListPage>(
+      find.byType(DepartmentListPage),
+    );
+    expect(departments.patient, isNull);
+    expect(find.text('Danh sách chuyên khoa'), findsOneWidget);
   });
   for (final width in [320.0, 390.0, 800.0]) {
     testWidgets('Không tràn bố cục ở chiều rộng $width và chữ lớn', (

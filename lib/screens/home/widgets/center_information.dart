@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/health_center_info.dart';
 import '../../../core/theme/app_theme.dart';
 
 class CenterInformation extends StatelessWidget {
@@ -79,25 +80,19 @@ class CenterInformation extends StatelessWidget {
               const _InformationRow(
                 icon: Icons.schedule_rounded,
                 title: 'Giờ làm việc',
+                value: '06:30 – 11:30 và 13:00 – 17:00',
               ),
               const SizedBox(height: 18),
               const _InformationRow(
                 icon: Icons.location_on_outlined,
                 title: 'Địa chỉ',
+                value: healthCenterAddress,
               ),
               const SizedBox(height: 18),
               const _InformationRow(
                 icon: Icons.phone_outlined,
                 title: 'Số điện thoại',
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Thông tin liên hệ chính thức sẽ được cập nhật tại đây.',
-                style: TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12,
-                  height: 1.5,
-                ),
+                value: '0123456789',
               ),
             ],
           ),
@@ -108,9 +103,14 @@ class CenterInformation extends StatelessWidget {
 }
 
 class _InformationRow extends StatelessWidget {
-  const _InformationRow({required this.icon, required this.title});
+  const _InformationRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
   final IconData icon;
   final String title;
+  final String value;
   @override
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,9 +133,9 @@ class _InformationRow extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Đang cập nhật',
-              style: TextStyle(color: AppColors.muted, fontSize: 13),
+            Text(
+              value,
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
             ),
           ],
         ),
