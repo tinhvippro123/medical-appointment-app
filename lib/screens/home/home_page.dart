@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/reveal_content.dart';
 
+import '../account/account_page.dart';
 import 'widgets/hero_banner.dart';
 import 'widgets/home_header.dart';
 import 'widgets/healthcare_functions_panel.dart';
@@ -51,7 +52,7 @@ class _HomePageState extends State<HomePage>
       );
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: selected == 2
+    appBar: (selected == 2 || selected == 4)
         ? null
         : AppBar(title: Text(AppBottomNavigation.labels[selected])),
     body: SafeArea(
@@ -80,9 +81,9 @@ class _HomePageState extends State<HomePage>
                 title: 'Thông báo',
                 icon: Icons.notifications_none_rounded,
               ),
-              const FeatureMessage(
-                title: 'Tài khoản',
-                icon: Icons.person_outline_rounded,
+              AccountPage(
+                onOpenHistory: () => selectTab(0),
+                onOpenBills: () => selectTab(1),
               ),
             ],
           ),
@@ -103,7 +104,7 @@ class _HomePageState extends State<HomePage>
           onCart: () => Navigator.of(context).pushNamed('/cart'),
           onNotifications: () =>
               open('Thông báo', Icons.notifications_none_rounded),
-          onProfile: () => open('Hồ sơ cá nhân', Icons.account_circle_outlined),
+          onProfile: () => selectTab(4),
         ),
         Center(
           child: ConstrainedBox(
