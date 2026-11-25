@@ -156,6 +156,84 @@ class AuthRepository {
     }
   }
 
+  Future<ForgotPasswordResult> forgotPasswordRequest(
+    ForgotPasswordRequest request,
+  ) async {
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('$baseUrl/api/auth/forgot-password'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(request.toJson()),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      final data = _tryDecode(response.bodyBytes);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final msg = data is Map && data['message'] is String
+            ? data['message'] as String
+            : 'Mã OTP đặt lại mật khẩu đã được gửi tới email của bạn.';
+        final devOtp = data is Map && data['devOtp'] is String
+            ? data['devOtp'] as String
+            : null;
+        return ForgotPasswordResult(message: msg, devOtp: devOtp);
+      }
+
+      throw ApiException(
+        parseApiErrorMessage(
+          data,
+          response.statusCode,
+          fallback: 'Không thể gửi mã OTP đặt lại mật khẩu.',
+        ),
+        errorCode: data is Map ? data['errorCode'] as String? : null,
+        statusCode: response.statusCode,
+      );
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw const ApiException('Kết nối quá thời gian. Vui lòng thử lại.');
+    } catch (_) {
+      throw const ApiException(
+        'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.',
+      );
+    }
+  }
+
+  Future<void> resetPasswordRequest(ResetPasswordRequest request) async {
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('$baseUrl/api/auth/reset-password'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(request.toJson()),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+
+      final data = _tryDecode(response.bodyBytes);
+      throw ApiException(
+        parseApiErrorMessage(
+          data,
+          response.statusCode,
+          fallback: 'Đặt lại mật khẩu không thành công.',
+        ),
+        errorCode: data is Map ? data['errorCode'] as String? : null,
+        statusCode: response.statusCode,
+      );
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw const ApiException('Kết nối quá thời gian. Vui lòng thử lại.');
+    } catch (_) {
+      throw const ApiException(
+        'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.',
+      );
+    }
+  }
+
   dynamic _tryDecode(List<int> bodyBytes) {
     if (bodyBytes.isEmpty) {
       return null;
