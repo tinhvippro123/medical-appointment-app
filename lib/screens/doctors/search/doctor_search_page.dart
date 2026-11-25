@@ -14,11 +14,13 @@ class DoctorSearchPage extends StatefulWidget {
     this.repository,
     this.initialKeyword,
     this.department,
+    this.browse = false,
   });
 
   final DoctorRepository? repository;
   final String? initialKeyword;
   final Department? department;
+  final bool browse;
 
   @override
   State<DoctorSearchPage> createState() => _DoctorSearchPageState();
@@ -81,7 +83,10 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      if (!_isLoading && !_isLoadingMore && _hasNextPage) {
+      if (!_isLoading &&
+          !_isLoadingMore &&
+          _hasNextPage &&
+          _errorMessage == null) {
         _performSearch(isNewKeyword: false);
       }
     }
@@ -103,12 +108,20 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
   }
 
   Future<void> _performSearch({required bool isNewKeyword}) async {
+    if (!isNewKeyword &&
+        (_isLoading ||
+            _isLoadingMore ||
+            !_hasNextPage ||
+            (_debounceTimer?.isActive ?? false))) {
+      return;
+    }
     // Tăng mã yêu cầu để bỏ qua các kết quả của request cũ
     final requestId = ++_currentRequestId;
 
     if (isNewKeyword) {
       setState(() {
         _isLoading = true;
+        _isLoadingMore = false;
         _errorMessage = null;
         _currentPage = 1;
         _hasNextPage = false;
@@ -117,6 +130,7 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
     } else {
       setState(() {
         _isLoadingMore = true;
+        _errorMessage = null;
       });
     }
 
@@ -124,12 +138,21 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
       final keyword = _searchController.text.trim();
       final pageToLoad = isNewKeyword ? 1 : _currentPage + 1;
 
-      final result = await _repository.searchDoctors(
-        keyword: keyword.isNotEmpty ? keyword : null,
-        departmentId: widget.department?.id,
-        page: pageToLoad,
-        pageSize: _pageSize,
-      );
+      final departmentId = widget.department?.id;
+      final result = await (widget.browse && keyword.isEmpty
+          ? departmentId == null
+                ? _repository.getDoctors(page: pageToLoad, pageSize: _pageSize)
+                : _repository.getDepartmentDoctors(
+                    departmentId,
+                    page: pageToLoad,
+                    pageSize: _pageSize,
+                  )
+          : _repository.searchDoctors(
+              keyword: keyword.isEmpty ? null : keyword,
+              departmentId: departmentId,
+              page: pageToLoad,
+              pageSize: _pageSize,
+            ));
 
       // Nếu người dùng đã gõ từ khóa khác (mã yêu cầu đã thay đổi) hoặc widget đã unmount, bỏ qua kết quả cũ
       if (!mounted || requestId != _currentRequestId) return;
@@ -140,7 +163,7 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
         if (isNewKeyword) {
           _doctors = result.items;
         } else {
-          _doctors.addAll(result.items);
+          _doctors = [..._doctors, ...result.items];
         }
         _isLoading = false;
         _isLoadingMore = false;
@@ -188,7 +211,7 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
             ),
             child: TextField(
               controller: _searchController,
-              autofocus: widget.department == null,
+              autofocus: !widget.browse && widget.department == null,
               textInputAction: TextInputAction.search,
               onChanged: _onSearchChanged,
               onSubmitted: (_) {
@@ -224,11 +247,11 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (widget.department case final department?)
+          if (widget.browse || widget.department != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Text(
-                department.name,
+                widget.department?.name ?? 'Danh sách bác sĩ',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
@@ -303,9 +326,10 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                widget.department != null &&
-                        _searchController.text.trim().isEmpty
-                    ? 'Chuyên khoa này chưa có bác sĩ.'
+                _searchController.text.trim().isEmpty && widget.browse
+                    ? widget.department == null
+                          ? 'Hiện chưa có bác sĩ trong danh sách.'
+                          : 'Chuyên khoa này chưa có bác sĩ.'
                     : 'Thử tìm kiếm với từ khóa khác',
                 style: const TextStyle(fontSize: 13, color: AppColors.muted),
               ),
@@ -319,9 +343,21 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.only(top: 8, bottom: 24),
-      itemCount: _doctors.length + (_isLoadingMore ? 1 : 0),
+      itemCount: _doctors.length + (_hasNextPage ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == _doctors.length) {
+          if (!_isLoadingMore) {
+            return Center(
+              child: TextButton(
+                onPressed: () => _performSearch(isNewKeyword: false),
+                child: Text(
+                  _errorMessage == null
+                      ? 'Xem thêm bác sĩ'
+                      : 'Tải thêm thất bại. Thử lại',
+                ),
+              ),
+            );
+          }
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(

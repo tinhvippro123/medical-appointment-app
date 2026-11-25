@@ -92,7 +92,7 @@ class _DepartmentListPageState extends State<DepartmentListPage> {
                     imageUrl: _repository.imageUrl(department.imageUrl),
                     onTap: () => Navigator.of(
                       context,
-                    ).pushNamed('/doctors/search', arguments: department),
+                    ).pushNamed('/doctors', arguments: department),
                   );
                 },
               ),
