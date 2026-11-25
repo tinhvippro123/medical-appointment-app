@@ -3,9 +3,12 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../models/doctor.dart';
 import '../../../../repositories/department_repository.dart';
+import '../../../../repositories/doctor_day_off_repository.dart';
 import '../../../../repositories/doctor_repository.dart';
+import '../../../../repositories/doctor_schedule_repository.dart';
 import '../../../../repositories/room_repository.dart';
 import 'doctor_form_page.dart';
+import 'schedule/doctor_schedule_page.dart';
 import 'widgets/doctor_admin_card.dart';
 
 class DoctorAdminPage extends StatefulWidget {
@@ -14,11 +17,15 @@ class DoctorAdminPage extends StatefulWidget {
     this.doctorRepository,
     this.departmentRepository,
     this.roomRepository,
+    this.scheduleRepository,
+    this.dayOffRepository,
   });
 
   final DoctorRepository? doctorRepository;
   final DepartmentRepository? departmentRepository;
   final RoomRepository? roomRepository;
+  final DoctorScheduleRepository? scheduleRepository;
+  final DoctorDayOffRepository? dayOffRepository;
 
   @override
   State<DoctorAdminPage> createState() => _DoctorAdminPageState();
@@ -309,10 +316,14 @@ class _DoctorAdminPageState extends State<DoctorAdminPage> {
             onTap: () => _openForm(doctor: doctor),
             onDelete: () => _confirmDelete(doctor),
             onSchedule: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Lịch làm việc của BS ${doctor.fullName} (Task F3)'),
-                  behavior: SnackBarBehavior.floating,
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DoctorSchedulePage(
+                    doctorId: doctor.id,
+                    doctorName: doctor.fullName,
+                    scheduleRepository: widget.scheduleRepository,
+                    dayOffRepository: widget.dayOffRepository,
+                  ),
                 ),
               );
             },
