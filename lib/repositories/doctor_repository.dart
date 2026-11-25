@@ -128,6 +128,7 @@ class DoctorRepository {
     DoctorFormInput input, {
     List<int>? imageBytes,
     String? imageFilename,
+    String? avatarUrl,
   }) async {
     final files = <MultipartFileItem>[];
     if (imageBytes != null && imageBytes.isNotEmpty && imageFilename != null) {
@@ -143,7 +144,7 @@ class DoctorRepository {
     final res = await _apiClient.sendMultipart(
       method: 'POST',
       path: '/api/doctors',
-      fields: input.toFields(),
+      fields: {...input.toFields(), 'AvatarUrl': ?avatarUrl},
       files: files.isNotEmpty ? files : null,
     );
 
@@ -156,6 +157,7 @@ class DoctorRepository {
     DoctorFormInput input, {
     List<int>? imageBytes,
     String? imageFilename,
+    String? avatarUrl,
   }) async {
     final files = <MultipartFileItem>[];
     if (imageBytes != null && imageBytes.isNotEmpty && imageFilename != null) {
@@ -171,7 +173,7 @@ class DoctorRepository {
     final res = await _apiClient.sendMultipart(
       method: 'PUT',
       path: '/api/doctors/$id',
-      fields: input.toFields(),
+      fields: {...input.toFields(), 'AvatarUrl': ?avatarUrl},
       files: files.isNotEmpty ? files : null,
     );
 

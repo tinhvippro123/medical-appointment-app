@@ -60,7 +60,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           MaterialPageRoute(
             builder: (_) => OnlinePaymentPage(
               order: order,
-              initialMethod: _paymentMethod,
+              method: _paymentMethod,
               repository: widget.paymentRepository,
             ),
           ),

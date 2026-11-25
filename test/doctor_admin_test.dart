@@ -154,6 +154,13 @@ void main() {
       expect(created.fullName, 'BS Mới');
       expect(requests.last.method, 'POST');
 
+      const avatarUrl = 'https://example.com/doctor.png';
+      await repo.updateDoctor(3, input, avatarUrl: avatarUrl);
+      expect(requests.last.method, 'PUT');
+      expect(requests.last.body, contains('name="AvatarUrl"'));
+      expect(requests.last.body, contains(avatarUrl));
+      expect(requests.last.body, isNot(contains('filename=')));
+
       // 3. DELETE xóa
       await repo.deleteDoctor(1);
       expect(requests.last.method, 'DELETE');
