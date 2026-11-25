@@ -13,6 +13,7 @@ import '../auth/login_page.dart';
 import '../home/home_page.dart';
 import 'departments/department_admin_page.dart';
 import 'doctors/doctor_admin_page.dart';
+import 'orders/admin_order_page.dart';
 import 'roles/role_admin_page.dart';
 import 'users/user_admin_page.dart';
 
@@ -264,6 +265,25 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                                     _openModule(const DoctorAdminPage()),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: _AdminModuleCard(
+                                icon: Icons.event_note_rounded,
+                                title: 'Lịch hẹn',
+                                caption: 'Đơn đặt lịch',
+                                onTap: () =>
+                                    _openModule(const AdminOrderPage()),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(child: SizedBox()),
                           ],
                         ),
                       ),

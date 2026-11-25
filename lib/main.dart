@@ -9,6 +9,7 @@ import 'screens/admin/doctors/doctor_admin_page.dart';
 import 'screens/admin/roles/role_admin_page.dart';
 import 'screens/admin/users/user_admin_page.dart';
 import 'screens/auth/auth_gate_page.dart';
+import 'screens/admin/orders/admin_order_page.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/booking/booking_page.dart';
 import 'screens/cart/cart_page.dart';
@@ -44,6 +45,7 @@ class MyApp extends StatelessWidget {
         '/admin/roles': (_) => const RoleAdminPage(),
         '/admin/departments': (_) => const DepartmentAdminPage(),
         '/admin/doctors': (_) => const DoctorAdminPage(),
+        '/admin/orders': (_) => const AdminOrderPage(),
         '/doctors': (context) {
           final argument = ModalRoute.of(context)?.settings.arguments;
           return DoctorSearchPage(
