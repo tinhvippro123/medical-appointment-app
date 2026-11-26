@@ -1,18 +1,29 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/reveal_content.dart';
+import '../../repositories/department_repository.dart';
+import '../../repositories/doctor_repository.dart';
 
 import '../account/account_page.dart';
 import '../booking/order_history_page.dart';
 import '../patient_profiles/patient_profiles_page.dart';
 import 'usage_guide_page.dart';
 import 'widgets/hero_banner.dart';
+import 'widgets/home_catalog_sections.dart';
 import 'widgets/home_header.dart';
 import 'widgets/healthcare_functions_panel.dart';
 import 'widgets/center_information.dart';
 import 'widgets/app_bottom_navigation.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({
+    super.key,
+    this.departmentRepository,
+    this.doctorRepository,
+  });
+
+  final DepartmentRepository? departmentRepository;
+  final DoctorRepository? doctorRepository;
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -142,7 +153,14 @@ class _HomePageState extends State<HomePage>
                   ),
                   const SizedBox(height: 20),
                   const RevealContent(order: 1, child: HeroBanner()),
-                  const RevealContent(order: 2, child: CenterInformation()),
+                  RevealContent(
+                    order: 2,
+                    child: HomeCatalogSections(
+                      departmentRepository: widget.departmentRepository,
+                      doctorRepository: widget.doctorRepository,
+                    ),
+                  ),
+                  const RevealContent(order: 3, child: CenterInformation()),
                 ],
               ),
             ),

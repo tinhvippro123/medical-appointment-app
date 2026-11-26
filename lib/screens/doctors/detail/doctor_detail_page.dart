@@ -43,8 +43,12 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
   bool _dayOffsFailed = false;
 
   bool _isLoadingRelated = false;
+  bool _isLoadingMoreRelated = false;
   String? _relatedErrorMessage;
+  int _relatedPage = 1;
+  bool _hasMoreRelated = false;
   List<Doctor> _relatedDoctors = [];
+  final ScrollController _relatedScrollController = ScrollController();
 
   @override
   void initState() {
@@ -52,6 +56,22 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     _repository = widget.repository ?? DoctorRepository();
     if (widget.doctorId != null) {
       _doctorId = widget.doctorId;
+    }
+    _relatedScrollController.addListener(_onRelatedScroll);
+  }
+
+  @override
+  void dispose() {
+    _relatedScrollController.removeListener(_onRelatedScroll);
+    _relatedScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onRelatedScroll() {
+    if (!_relatedScrollController.hasClients) return;
+    if (_relatedScrollController.position.pixels >=
+        _relatedScrollController.position.maxScrollExtent - 120) {
+      _loadMoreRelatedDoctors();
     }
   }
 
@@ -152,21 +172,29 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     }
   }
 
-  /// Tải danh sách bác sĩ liên quan cùng chuyên khoa
+  /// Tải danh sách bác sĩ liên quan cùng chuyên khoa (trang 1)
   Future<void> _loadRelatedDoctors(int requestId) async {
     if (_doctorId == null) return;
 
     setState(() {
       _isLoadingRelated = true;
+      _isLoadingMoreRelated = false;
       _relatedErrorMessage = null;
+      _relatedPage = 1;
+      _hasMoreRelated = false;
     });
 
     try {
-      final result =
-          await _repository.getRelatedDoctors(_doctorId!, pageSize: 5);
+      final result = await _repository.getRelatedDoctors(
+        _doctorId!,
+        page: 1,
+        pageSize: 5,
+      );
       if (!mounted || requestId != _currentRequestId) return;
       setState(() {
         _relatedDoctors = result.items;
+        _relatedPage = result.page;
+        _hasMoreRelated = result.hasNextPage;
         _isLoadingRelated = false;
       });
     } catch (_) {
@@ -175,6 +203,36 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
         _isLoadingRelated = false;
         _relatedErrorMessage = 'Không thể tải bác sĩ liên quan';
       });
+    }
+  }
+
+  /// Tải thêm trang tiếp theo cho danh sách bác sĩ liên quan
+  Future<void> _loadMoreRelatedDoctors() async {
+    if (_doctorId == null ||
+        _isLoadingRelated ||
+        _isLoadingMoreRelated ||
+        !_hasMoreRelated) {
+      return;
+    }
+    final requestId = _currentRequestId;
+    setState(() => _isLoadingMoreRelated = true);
+
+    try {
+      final result = await _repository.getRelatedDoctors(
+        _doctorId!,
+        page: _relatedPage + 1,
+        pageSize: 5,
+      );
+      if (!mounted || requestId != _currentRequestId) return;
+      setState(() {
+        _relatedDoctors = [..._relatedDoctors, ...result.items];
+        _relatedPage = result.page;
+        _hasMoreRelated = result.hasNextPage;
+        _isLoadingMoreRelated = false;
+      });
+    } catch (_) {
+      if (!mounted || requestId != _currentRequestId) return;
+      setState(() => _isLoadingMoreRelated = false);
     }
   }
 
@@ -642,13 +700,38 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Bác sĩ liên quan',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppColors.text,
-          ),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Bác sĩ liên quan',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.text,
+                ),
+              ),
+            ),
+            if (_hasMoreRelated)
+              TextButton(
+                key: const ValueKey('related-doctors-load-more-btn'),
+                onPressed: _isLoadingMoreRelated
+                    ? null
+                    : _loadMoreRelatedDoctors,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  _isLoadingMoreRelated ? 'Đang tải...' : 'Xem thêm',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 12),
         if (_isLoadingRelated)
@@ -698,10 +781,55 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
           SizedBox(
             height: 175,
             child: ListView.separated(
+              controller: _relatedScrollController,
               scrollDirection: Axis.horizontal,
-              itemCount: _relatedDoctors.length,
+              itemCount: _relatedDoctors.length + (_hasMoreRelated ? 1 : 0),
               separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
+                if (index >= _relatedDoctors.length) {
+                  return InkWell(
+                    onTap: _isLoadingMoreRelated
+                        ? null
+                        : _loadMoreRelatedDoctors,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xffdfedf8)),
+                      ),
+                      child: Center(
+                        child: _isLoadingMoreRelated
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: AppColors.primary,
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'Tải thêm',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  );
+                }
                 final rel = _relatedDoctors[index];
                 return RelatedDoctorCard(
                   doctor: rel,
@@ -710,11 +838,19 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
                     final navigator = Navigator.of(context);
                     final patient = widget.patient;
                     if (patient == null) {
-                      navigator.pushReplacementNamed('/doctors/detail', arguments: rel.id);
+                      navigator.pushReplacementNamed(
+                        '/doctors/detail',
+                        arguments: rel.id,
+                      );
                     } else {
-                      navigator.pushReplacement(MaterialPageRoute(builder: (_) => DoctorDetailPage(
-                        doctorId: rel.id, patient: patient,
-                      )));
+                      navigator.pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => DoctorDetailPage(
+                            doctorId: rel.id,
+                            patient: patient,
+                          ),
+                        ),
+                      );
                     }
                   },
                 );

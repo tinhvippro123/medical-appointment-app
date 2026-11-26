@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/department.dart';
+import '../../../models/order.dart';
 import '../../../repositories/department_repository.dart';
 import 'department_form_page.dart';
 
@@ -210,6 +211,17 @@ class _DepartmentAdminPageState extends State<DepartmentAdminPage> {
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
+                                    if (item.consultationFee != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Phí khám: ${Order.formatMoney(item.consultationFee!)}',
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xff1677e8),
+                                        ),
+                                      ),
+                                    ],
                                     const SizedBox(height: 6),
                                     Text(
                                       item.description?.isNotEmpty == true

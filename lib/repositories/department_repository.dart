@@ -75,6 +75,7 @@ class DepartmentRepository {
     int? id,
     required String name,
     required String description,
+    double? consultationFee,
     String? imageUrl,
   }) async {
     final request = http.Request(
@@ -85,9 +86,19 @@ class DepartmentRepository {
     request.body = jsonEncode({
       'name': name,
       'description': description,
+      'consultationFee': ?consultationFee,
       'imageUrl': imageUrl,
     });
     return Department.fromJson(await _send(request) as Map<String, dynamic>);
+  }
+
+  Future<Department> deleteImage(int id) async {
+    return Department.fromJson(
+      await _send(
+            http.Request('DELETE', Uri.parse('$baseUrl/api/departments/$id/image')),
+          )
+          as Map<String, dynamic>,
+    );
   }
 
   Future<Department> upload(int id, List<int> bytes, String name) async {

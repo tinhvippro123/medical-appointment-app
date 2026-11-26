@@ -665,6 +665,75 @@ void main() {
       expect(find.text('Không thể tải bác sĩ liên quan'), findsNothing);
       expect(find.byType(RelatedDoctorCard), findsOneWidget);
     });
+
+    testWidgets('Bác sĩ liên quan hỗ trợ tải phân trang trang 2 khi bấm Xem thêm', (tester) async {
+      final mockClient = MockClient((request) async {
+        if (request.url.path == '/api/doctors/1') {
+          return http.Response.bytes(
+            utf8.encode(jsonEncode(sampleDoctorDetailJson(id: 1))),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        } else if (request.url.path == '/api/doctors/1/related') {
+          final page = int.tryParse(request.url.queryParameters['page'] ?? '1') ?? 1;
+          if (page == 1) {
+            return http.Response.bytes(
+              utf8.encode(jsonEncode({
+                'items': [
+                  sampleDoctorDetailJson(id: 2, name: 'BS Liên Quan Trang 1'),
+                ],
+                'totalCount': 2,
+                'page': 1,
+                'pageSize': 1,
+                'totalPages': 2,
+                'hasPreviousPage': false,
+                'hasNextPage': true,
+              })),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response.bytes(
+            utf8.encode(jsonEncode({
+              'items': [
+                sampleDoctorDetailJson(id: 3, name: 'BS Liên Quan Trang 2'),
+              ],
+              'totalCount': 2,
+              'page': 2,
+              'pageSize': 1,
+              'totalPages': 2,
+              'hasPreviousPage': true,
+              'hasNextPage': false,
+            })),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return http.Response('Not Found', 404);
+      });
+
+      final apiClient = ApiClient(client: mockClient, baseUrl: 'http://test.api');
+      final repo = DoctorRepository(apiClient: apiClient);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: DoctorDetailPage(doctorId: 1, repository: repo),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('BS Liên Quan Trang 1'), findsOneWidget);
+      final loadMoreBtn = find.byKey(const ValueKey('related-doctors-load-more-btn'));
+      expect(loadMoreBtn, findsOneWidget);
+
+      await tester.ensureVisible(loadMoreBtn);
+      await tester.tap(loadMoreBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('BS Liên Quan Trang 2'), findsOneWidget);
+      expect(loadMoreBtn, findsNothing);
+    });
   });
 
   group('6. Nút "Đặt lịch khám" Widget Tests', () {

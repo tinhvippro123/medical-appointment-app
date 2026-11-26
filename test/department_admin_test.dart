@@ -81,8 +81,13 @@ void main() {
         );
       }),
     );
-    final saved = await repo.save(name: 'Tim mạch', description: 'Mô tả');
+    final saved = await repo.save(
+      name: 'Tim mạch',
+      description: 'Mô tả',
+      consultationFee: 150000,
+    );
     expect(jsonDecode(requests.first.body)['name'], 'Tim mạch');
+    expect(jsonDecode(requests.first.body)['consultationFee'], 150000);
     await repo.upload(saved.id, [1, 2, 3], 'photo.png');
     expect(requests.last.url.path, '/api/departments/1/image');
     expect(
@@ -95,8 +100,17 @@ void main() {
     expect(requests.last.method, 'POST');
     expect(requests.last.url.path, '/api/departments/1/image/url');
     expect(jsonDecode(requests.last.body), {'imageUrl': imageUrl});
-    await repo.save(id: 1, name: 'Tim mạch', description: 'Sửa');
+    await repo.deleteImage(saved.id);
+    expect(requests.last.method, 'DELETE');
+    expect(requests.last.url.path, '/api/departments/1/image');
+    await repo.save(
+      id: 1,
+      name: 'Tim mạch',
+      description: 'Sửa',
+      consultationFee: 200000,
+    );
     expect(requests.last.method, 'PUT');
+    expect(jsonDecode(requests.last.body)['consultationFee'], 200000);
   });
 }
 
