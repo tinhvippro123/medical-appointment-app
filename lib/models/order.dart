@@ -254,6 +254,8 @@ class Order {
         return 'Đã thanh toán';
       case 'unpaid':
         return 'Chưa thanh toán';
+      case 'refunded':
+        return 'Đã hoàn tiền';
       default:
         final trimmed = paymentStatus.trim();
         return trimmed.isEmpty ? 'Chưa xác định' : trimmed;

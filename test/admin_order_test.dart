@@ -1171,7 +1171,7 @@ void main() {
       expect(find.byType(AdminOrderPage), findsOneWidget);
     });
 
-    testWidgets('Route /admin/orders trong MyApp điều hướng đúng sang AdminOrderPage', (
+    testWidgets('Route /admin/orders trong MyApp chặn PATIENT và mở AdminOrderPage cho ADMIN', (
       tester,
     ) async {
       configureScreenSize(tester);
@@ -1192,6 +1192,16 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Mở quản lý lịch hẹn'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AdminOrderPage), findsNothing);
+      expect(find.text('Bạn không có quyền truy cập'), findsOneWidget);
+
+      await SessionHepler.saveToken(createFakeJwt('ADMIN'));
+      await tester.tap(find.text('Quay lại'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Mở quản lý lịch hẹn'));

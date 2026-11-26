@@ -62,10 +62,10 @@ class RoleItem {
 
   factory RoleItem.fromJson(Map<String, dynamic> json) {
     return RoleItem(
-      id: (json['id'] as num).toInt(),
-      key: (json['key'] ?? '') as String,
-      name: (json['name'] ?? '') as String,
-      description: json['description'] as String?,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      key: (json['key'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      description: json['description']?.toString(),
       userCount: (json['userCount'] as num?)?.toInt() ?? 0,
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt']),
@@ -83,10 +83,10 @@ class RoleItem {
 
   factory RoleItem.fromDbMap(Map<String, Object?> map) {
     return RoleItem(
-      id: (map['id'] as num).toInt(),
-      key: (map['role_key'] ?? '') as String,
-      name: (map['name'] ?? '') as String,
-      description: map['description'] as String?,
+      id: (map['id'] as num?)?.toInt() ?? 0,
+      key: (map['role_key'] ?? '').toString(),
+      name: (map['name'] ?? '').toString(),
+      description: map['description']?.toString(),
       userCount: (map['user_count'] as num?)?.toInt() ?? 0,
       updatedAt: _parseDate(map['updated_at']),
     );
@@ -125,13 +125,13 @@ class UserItem {
 
   factory UserItem.fromJson(Map<String, dynamic> json) {
     return UserItem(
-      id: (json['id'] as num).toInt(),
-      fullName: (json['fullName'] ?? '') as String,
-      phone: (json['phone'] ?? '') as String,
-      email: json['email'] as String?,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      fullName: (json['fullName'] ?? '').toString(),
+      phone: (json['phone'] ?? '').toString(),
+      email: json['email']?.toString(),
       roleId: (json['roleId'] as num?)?.toInt() ?? 0,
-      roleKey: (json['roleKey'] ?? '') as String,
-      roleName: (json['roleName'] ?? '') as String,
+      roleKey: (json['roleKey'] ?? '').toString(),
+      roleName: (json['roleName'] ?? '').toString(),
       isActive: (json['isActive'] as bool?) ?? true,
       createdAt: _parseDate(json['createdAt']),
     );
@@ -151,13 +151,13 @@ class UserItem {
 
   factory UserItem.fromDbMap(Map<String, Object?> map) {
     return UserItem(
-      id: (map['id'] as num).toInt(),
-      fullName: (map['full_name'] ?? '') as String,
-      phone: (map['phone'] ?? '') as String,
-      email: map['email'] as String?,
+      id: (map['id'] as num?)?.toInt() ?? 0,
+      fullName: (map['full_name'] ?? '').toString(),
+      phone: (map['phone'] ?? '').toString(),
+      email: map['email']?.toString(),
       roleId: (map['role_id'] as num?)?.toInt() ?? 0,
-      roleKey: (map['role_key'] ?? '') as String,
-      roleName: (map['role_name'] ?? '') as String,
+      roleKey: (map['role_key'] ?? '').toString(),
+      roleName: (map['role_name'] ?? '').toString(),
       isActive: ((map['is_active'] as num?)?.toInt() ?? 1) == 1,
       createdAt: _parseDate(map['created_at']),
     );

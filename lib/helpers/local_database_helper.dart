@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:sqflite/sqflite.dart';
 import '../models/user_role_models.dart';
+import 'session_helper.dart';
 import 'sqlite_platform_stub.dart'
     if (dart.library.io) 'sqlite_platform_io.dart'
     as platform;
@@ -101,12 +102,14 @@ class LocalDatabaseHelper {
     if (token.isEmpty) {
       return null;
     }
+    final decoded = SessionHepler.decodeToken(token);
     return StoredSession(
       user: SessionUser(
         userId: (row['user_id'] as num).toInt(),
         fullName: (row['full_name'] ?? '') as String,
         phone: (row['phone'] ?? '') as String,
         roleKey: (row['role_key'] ?? '') as String,
+        expiresAt: decoded?.expiresAt,
       ),
       token: token,
     );

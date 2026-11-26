@@ -276,12 +276,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) {
-                      return 'Vui lòng nhập mật khẩu';
-                    }
-                    return null;
-                  },
+                  validator: FormValidators.validatePassword,
                 ),
                 const SizedBox(height: 10),
                 Align(

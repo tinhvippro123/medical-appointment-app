@@ -62,6 +62,7 @@ class _BookingPageState extends State<BookingPage> {
   DateTime? _firstSelectableDate;
   DateTime? _selectedDate;
   String? _selectedSlot;
+  bool _showCalendarOverride = false;
 
   bool _isLoadingProfiles = false;
   bool _requiresLogin = false;
@@ -527,10 +528,19 @@ class _BookingPageState extends State<BookingPage> {
                       : 'Bác sĩ chưa có lịch làm việc khả dụng trong 60 ngày tới',
                 )
               else ...[
-                if (widget.initialDate == null)
+                if (widget.initialDate == null ||
+                    _showCalendarOverride ||
+                    _selectedDate == null ||
+                    !isBookingDaySelectable(
+                      day: _selectedDate!,
+                      schedules: doctor.schedules,
+                      dayOffDates: _dayOffDates,
+                      firstDate: _firstDate,
+                      lastDate: _lastDate,
+                    ))
                   _buildCalendarSection(doctor)
-                else if (_dayOffWarning != null)
-                  Text(_dayOffWarning!),
+                else
+                  _buildSelectedDateBanner(),
                 const SizedBox(height: 16),
                 _buildSlotSection(slots, emptySlotMessage),
                 const SizedBox(height: 16),
@@ -581,7 +591,70 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
+  Widget _buildSelectedDateBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xffe2e8f0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_month_outlined,
+                size: 20,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _selectedDate != null
+                      ? 'Ngày khám · ${formatDisplayDate(_selectedDate!)}'
+                      : 'Chọn ngày khám',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
+                ),
+              ),
+              TextButton(
+                key: const ValueKey('booking-change-date-btn'),
+                onPressed: () => setState(() => _showCalendarOverride = true),
+                child: const Text('Đổi ngày'),
+              ),
+            ],
+          ),
+          if (_dayOffWarning != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              _dayOffWarning!,
+              style: const TextStyle(fontSize: 12, color: Color(0xff92400e)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildCalendarSection(Doctor doctor) {
+    final pickerInitialDate =
+        (_selectedDate != null &&
+            isBookingDaySelectable(
+              day: _selectedDate!,
+              schedules: doctor.schedules,
+              dayOffDates: _dayOffDates,
+              firstDate: _firstDate,
+              lastDate: _lastDate,
+            ))
+        ? _selectedDate!
+        : _firstSelectableDate!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -644,7 +717,7 @@ class _BookingPageState extends State<BookingPage> {
           ],
           const SizedBox(height: 8),
           CalendarDatePicker(
-            initialDate: _selectedDate ?? _firstSelectableDate!,
+            initialDate: pickerInitialDate,
             firstDate: _firstDate,
             lastDate: _lastDate,
             currentDate: _firstDate,

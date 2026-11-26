@@ -1,10 +1,8 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
-import '../helpers/api_exception.dart';
+import '../core/network/api_client.dart';
+import '../core/network/api_exception.dart';
 import '../helpers/local_database_helper.dart';
-import '../helpers/session_helper.dart';
 import '../models/user_role_models.dart';
 
 class UserRepository {
@@ -12,62 +10,21 @@ class UserRepository {
     http.Client? client,
     String? baseUrl,
     Future<String?> Function()? token,
+    ApiClient? apiClient,
     this.enableCache = true,
-  }) : _client = client ?? http.Client(),
-       baseUrl = (baseUrl ?? AppConfig.baseUrl).replaceFirst(RegExp(r'/+$'), ''),
-       _token = token ?? SessionHepler.getToken;
+  }) : baseUrl = (baseUrl ?? AppConfig.baseUrl).replaceFirst(RegExp(r'/+$'), ''),
+       _api =
+           apiClient ??
+           ApiClient(
+             client: client,
+             baseUrl: baseUrl,
+             tokenProvider: token,
+             defaultTimeout: const Duration(seconds: 20),
+           );
 
-  final http.Client _client;
   final String baseUrl;
-  final Future<String?> Function() _token;
+  final ApiClient _api;
   final bool enableCache;
-
-  Future<dynamic> _send(
-    String method,
-    Uri uri, {
-    Map<String, dynamic>? body,
-  }) async {
-    final jwt = await _token();
-    final request = http.Request(method, uri);
-    if (jwt != null && jwt.isNotEmpty) {
-      request.headers['Authorization'] = 'Bearer $jwt';
-    }
-    if (body != null) {
-      request.headers['Content-Type'] = 'application/json';
-      request.body = jsonEncode(body);
-    }
-
-    try {
-      final response = await (() async => http.Response.fromStream(
-        await _client.send(request),
-      ))().timeout(const Duration(seconds: 20));
-
-      dynamic data;
-      if (response.bodyBytes.isNotEmpty) {
-        try {
-          data = jsonDecode(utf8.decode(response.bodyBytes));
-        } catch (_) {}
-      }
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ApiException(
-          parseApiErrorMessage(data, response.statusCode),
-          errorCode: data is Map ? data['errorCode'] as String? : null,
-          statusCode: response.statusCode,
-        );
-      }
-
-      return data;
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw const ApiException('Kết nối quá thời gian. Vui lòng thử lại.');
-    } catch (_) {
-      throw const ApiException(
-        'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.',
-      );
-    }
-  }
 
   Future<PagedUsers> list({
     int page = 1,
@@ -76,28 +33,23 @@ class UserRepository {
     int? roleId,
     bool? isActive,
   }) async {
-    final params = <String, String>{
-      'page': '$page',
-      'pageSize': '$pageSize',
-    };
+    final params = <String, dynamic>{'page': page, 'pageSize': pageSize};
     final trimmedKeyword = keyword?.trim();
     if (trimmedKeyword != null && trimmedKeyword.isNotEmpty) {
       params['keyword'] = trimmedKeyword;
     }
     if (roleId != null) {
-      params['roleId'] = '$roleId';
+      params['roleId'] = roleId;
     }
     if (isActive != null) {
       params['isActive'] = isActive.toString();
     }
 
-    final uri = Uri.parse(
-      '$baseUrl/api/users',
-    ).replace(queryParameters: params);
-
     try {
-      final data = await _send('GET', uri);
-      final result = PagedUsers.fromJson(data as Map<String, dynamic>);
+      final data = await _api.get('/api/users', queryParameters: params);
+      final result = PagedUsers.fromJson(
+        Map<String, dynamic>.from(data as Map),
+      );
 
       final isUnfilteredFirstPage =
           page == 1 &&
@@ -111,7 +63,7 @@ class UserRepository {
       }
       return result;
     } on ApiException catch (e) {
-      if (e.statusCode == null && enableCache) {
+      if ((e.statusCode == 0 || e.statusCode == 408) && enableCache) {
         final cached = await LocalDatabaseHelper.getCachedUsers();
         if (cached.isNotEmpty) {
           final filtered = cached.where((user) {
@@ -158,9 +110,8 @@ class UserRepository {
     required int roleId,
   }) async {
     final trimmedEmail = email?.trim();
-    final data = await _send(
-      'POST',
-      Uri.parse('$baseUrl/api/users'),
+    final data = await _api.post(
+      '/api/users',
       body: {
         'fullName': fullName.trim(),
         'phone': phone.trim(),
@@ -171,7 +122,7 @@ class UserRepository {
         'roleId': roleId,
       },
     );
-    return UserItem.fromJson(data as Map<String, dynamic>);
+    return UserItem.fromJson(Map<String, dynamic>.from(data as Map));
   }
 
   Future<UserItem> update(
@@ -183,9 +134,8 @@ class UserRepository {
     required bool isActive,
   }) async {
     final trimmedEmail = email?.trim();
-    final data = await _send(
-      'PUT',
-      Uri.parse('$baseUrl/api/users/$id'),
+    final data = await _api.put(
+      '/api/users/$id',
       body: {
         'fullName': fullName.trim(),
         'phone': phone.trim(),
@@ -196,28 +146,26 @@ class UserRepository {
         'isActive': isActive,
       },
     );
-    return UserItem.fromJson(data as Map<String, dynamic>);
+    return UserItem.fromJson(Map<String, dynamic>.from(data as Map));
   }
 
   Future<UserItem> updateRole(int id, int roleId) async {
-    final data = await _send(
-      'PUT',
-      Uri.parse('$baseUrl/api/users/$id/role'),
+    final data = await _api.put(
+      '/api/users/$id/role',
       body: {'roleId': roleId},
     );
-    return UserItem.fromJson(data as Map<String, dynamic>);
+    return UserItem.fromJson(Map<String, dynamic>.from(data as Map));
   }
 
   Future<UserItem> updateStatus(int id, bool isActive) async {
-    final data = await _send(
-      'PATCH',
-      Uri.parse('$baseUrl/api/users/$id/status'),
+    final data = await _api.patch(
+      '/api/users/$id/status',
       body: {'isActive': isActive},
     );
-    return UserItem.fromJson(data as Map<String, dynamic>);
+    return UserItem.fromJson(Map<String, dynamic>.from(data as Map));
   }
 
   Future<void> delete(int id) async {
-    await _send('DELETE', Uri.parse('$baseUrl/api/users/$id'));
+    await _api.delete('/api/users/$id');
   }
 }

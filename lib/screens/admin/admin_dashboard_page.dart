@@ -52,6 +52,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       widget.doctorRepository ?? DoctorRepository();
 
   SessionUser? _user;
+  bool _checkingAccess = true;
+  bool _isAuthorized = false;
   bool _loggingOut = false;
   bool _loadingStats = false;
   int? _userCount;
@@ -63,16 +65,28 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   void initState() {
     super.initState();
     _user = widget.currentUser;
-    if (_user == null) {
-      _loadUser();
+    if (_user != null) {
+      _checkingAccess = false;
+      _isAuthorized = _user!.isAdmin;
+      if (_isAuthorized) {
+        _loadStats();
+      }
+    } else {
+      _loadUserAndVerify();
     }
-    _loadStats();
   }
 
-  Future<void> _loadUser() async {
+  Future<void> _loadUserAndVerify() async {
     final user = await SessionHepler.getCurrentUser();
-    if (mounted) {
-      setState(() => _user = user);
+    if (!mounted) return;
+    final authorized = user?.isAdmin ?? false;
+    setState(() {
+      _user = user;
+      _checkingAccess = false;
+      _isAuthorized = authorized;
+    });
+    if (authorized) {
+      await _loadStats();
     }
   }
 
@@ -175,6 +189,59 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingAccess) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!_isAuthorized) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Quản trị hệ thống')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.lock_outline_rounded,
+                  size: 56,
+                  color: Color(0xffef4444),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Bạn không có quyền truy cập',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Chỉ Quản trị viên (ADMIN) mới được phép truy cập trang này.',
+                  style: TextStyle(fontSize: 14, color: AppColors.muted),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                    } else {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const LoginPage()),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Quay lại'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final name = _user?.fullName.isNotEmpty == true
         ? _user!.fullName
         : 'Quản trị viên';

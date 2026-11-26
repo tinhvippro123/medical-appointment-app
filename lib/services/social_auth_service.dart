@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../helpers/api_exception.dart';
+import '../core/network/api_exception.dart';
 import '../models/auth_models.dart';
 
 abstract class SocialAuthGateway {
@@ -29,7 +29,10 @@ class NativeSocialAuthGateway implements SocialAuthGateway {
       'google' || 'gmail' => _signInWithGoogle(),
       'facebook' => _signInWithFacebook(),
       'zalo' => _signInWithZalo(),
-      _ => throw const ApiException('Phương thức đăng nhập không hợp lệ.'),
+      _ => throw const ApiException(
+        statusCode: 400,
+        message: 'Phương thức đăng nhập không hợp lệ.',
+      ),
     };
   }
 
@@ -53,7 +56,8 @@ class NativeSocialAuthGateway implements SocialAuthGateway {
       if ((auth.idToken == null || auth.idToken!.isEmpty) &&
           (auth.accessToken == null || auth.accessToken!.isEmpty)) {
         throw const ApiException(
-          'Không lấy được mã xác thực từ Google. Vui lòng thử lại.',
+          statusCode: 400,
+          message: 'Không lấy được mã xác thực từ Google. Vui lòng thử lại.',
         );
       }
 
@@ -72,10 +76,15 @@ class NativeSocialAuthGateway implements SocialAuthGateway {
         return null;
       }
       throw ApiException(
-        'Đăng nhập Google thất bại (${e.code}). Kiểm tra kết nối mạng và cấu hình SHA-1.',
+        statusCode: 400,
+        message:
+            'Đăng nhập Google thất bại (${e.code}). Kiểm tra kết nối mạng và cấu hình SHA-1.',
       );
     } catch (_) {
-      throw const ApiException('Không thể khởi tạo đăng nhập Google.');
+      throw const ApiException(
+        statusCode: 400,
+        message: 'Không thể khởi tạo đăng nhập Google.',
+      );
     }
   }
 
@@ -95,7 +104,8 @@ class NativeSocialAuthGateway implements SocialAuthGateway {
 
       if (result.status != LoginStatus.success || result.accessToken == null) {
         throw ApiException(
-          result.message ?? 'Đăng nhập Facebook không thành công.',
+          statusCode: 400,
+          message: result.message ?? 'Đăng nhập Facebook không thành công.',
         );
       }
 
@@ -105,8 +115,11 @@ class NativeSocialAuthGateway implements SocialAuthGateway {
       );
     } on ApiException {
       rethrow;
-    } catch (e) {
-      throw ApiException('Không thể mở đăng nhập Facebook: $e');
+    } catch (_) {
+      throw const ApiException(
+        statusCode: 400,
+        message: 'Không thể mở đăng nhập Facebook. Vui lòng thử lại.',
+      );
     }
   }
 
@@ -131,7 +144,8 @@ class NativeSocialAuthGateway implements SocialAuthGateway {
       );
     } on MissingPluginException {
       throw const ApiException(
-        'Đăng nhập Zalo chỉ hỗ trợ trên ứng dụng Android đã cài đặt.',
+        statusCode: 400,
+        message: 'Đăng nhập Zalo chỉ hỗ trợ trên ứng dụng Android đã cài đặt.',
       );
     } on PlatformException catch (e) {
       if (e.details == -1114 ||
@@ -139,7 +153,9 @@ class NativeSocialAuthGateway implements SocialAuthGateway {
         return null;
       }
       throw ApiException(
-        e.message ?? 'Đăng nhập Zalo không thành công (${e.details}).',
+        statusCode: 400,
+        message:
+            e.message ?? 'Đăng nhập Zalo không thành công (${e.details}).',
       );
     }
   }

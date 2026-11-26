@@ -93,7 +93,10 @@ void main() {
       );
 
       // Best-effort: lỗi dọn giỏ không ném Exception ra ngoài và vẫn xóa sạch token, role
-      await SessionHepler.clear(cartRepository: failingCartRepo);
+      await SessionHepler.clear(
+        clearRemoteCart: true,
+        cartRepository: failingCartRepo,
+      );
 
       expect(await SessionHepler.getToken(), isNull);
       expect(await SessionHepler.getRole(), isNull);
@@ -101,7 +104,7 @@ void main() {
       expect(await SessionHepler.isAdmin(), isFalse);
     });
 
-    test('clear() hoạt động bình thường và xóa token/role khi dọn giỏ thành công', () async {
+    test('clear() hoạt động bình thường và xóa token/role khi bật clearRemoteCart', () async {
       final patientToken = createFakeJwt({'Role': 'PATIENT'});
       await SessionHepler.saveToken(patientToken);
 
@@ -120,13 +123,44 @@ void main() {
         baseUrl: 'http://test.api',
       );
 
-      await SessionHepler.clear(cartRepository: successCartRepo);
+      await SessionHepler.clear(
+        clearRemoteCart: true,
+        cartRepository: successCartRepo,
+      );
 
       expect(cartClearCalled, isTrue);
       expect(await SessionHepler.getToken(), isNull);
       expect(await SessionHepler.getRole(), isNull);
       expect(await SessionHepler.isLoggedIn(), isFalse);
       expect(await SessionHepler.isAdmin(), isFalse);
+    });
+
+    test('clear() mặc định KHÔNG gọi DELETE /api/cart/clear', () async {
+      final patientToken = createFakeJwt({'Role': 'PATIENT'});
+      await SessionHepler.saveToken(patientToken);
+
+      var cartClearCalled = false;
+      final client = MockClient((request) async {
+        cartClearCalled = true;
+        return http.Response.bytes(const [], 204);
+      });
+      final cartRepo = CartRepository(client: client, baseUrl: 'http://test.api');
+
+      await SessionHepler.clear(cartRepository: cartRepo);
+
+      expect(cartClearCalled, isFalse);
+      expect(await SessionHepler.getToken(), isNull);
+    });
+
+    test('isAdmin() không tin user_role giả mạo và isLoggedIn() từ chối token hỏng', () async {
+      SharedPreferences.setMockInitialValues({
+        'user_role': 'ADMIN',
+        'jwt_token': 'malformed_token',
+      });
+
+      expect(await SessionHepler.isAdmin(), isFalse);
+      expect(await SessionHepler.isLoggedIn(), isFalse);
+      expect(await SessionHepler.getToken(), isNull);
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/network/api_exception.dart';
+import '../../helpers/form_validators.dart';
 import '../../models/patient_profile.dart';
 import '../../repositories/patient_profile_repository.dart';
 
@@ -57,7 +58,8 @@ class _PatientProfileFormPageState extends State<PatientProfileFormPage> {
 
     form.save();
     _fields.remove('id');
-    _fields['dateOfBirth'] = birthDate.toIso8601String().split('T').first;
+    _fields['dateOfBirth'] =
+        '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}';
     setState(() => _saving = true);
     try {
       final profile = await widget.repository.save(
@@ -84,6 +86,7 @@ class _PatientProfileFormPageState extends State<PatientProfileFormPage> {
     bool requiredField = false,
     int? maxLength,
     TextInputType? keyboardType,
+    String? Function(String?)? extraValidator,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: TextFormField(
@@ -99,6 +102,9 @@ class _PatientProfileFormPageState extends State<PatientProfileFormPage> {
       validator: (value) {
         if (requiredField && (value == null || value.trim().isEmpty)) {
           return 'Vui lòng nhập thông tin này.';
+        }
+        if (extraValidator != null) {
+          return extraValidator(value);
         }
         return null;
       },
@@ -178,7 +184,13 @@ class _PatientProfileFormPageState extends State<PatientProfileFormPage> {
                     _textField(
                       'phone',
                       'Số điện thoại',
+                      maxLength: 10,
                       keyboardType: TextInputType.phone,
+                      extraValidator: (value) {
+                        final text = value?.trim() ?? '';
+                        if (text.isEmpty) return null;
+                        return FormValidators.validatePhone(text);
+                      },
                     ),
                     _textField('address', 'Địa chỉ'),
                     _textField(

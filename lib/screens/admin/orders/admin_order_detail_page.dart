@@ -41,6 +41,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   @override
   void initState() {
     super.initState();
+    _order = widget.initialOrder;
     _initAccessAndLoad();
   }
 
@@ -239,6 +240,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   }
 
   void _popWithResult() {
+    if (_isUpdating) return;
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop(_hasUpdated);
     }
@@ -567,7 +569,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Lưu ý: Đổi trạng thái đơn không tự động thay đổi trạng thái thanh toán.',
+              'Lưu ý: Đơn thanh toán trực tuyến cần thanh toán trước khi xác nhận; đơn tiền mặt sẽ tự chuyển Đã thanh toán khi Hoàn thành.',
               style: TextStyle(fontSize: 12, color: AppColors.muted),
             ),
             if (_isUpdating) ...[
@@ -797,13 +799,13 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
+        if (didPop || _isUpdating) return;
         _popWithResult();
       },
       child: Scaffold(
         appBar: AppBar(
           leading: Navigator.of(context).canPop()
-              ? BackButton(onPressed: _popWithResult)
+              ? BackButton(onPressed: _isUpdating ? null : _popWithResult)
               : null,
           title: Text(
             'Chi tiết đơn #${widget.orderId}',

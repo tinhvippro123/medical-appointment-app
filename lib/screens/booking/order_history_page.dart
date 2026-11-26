@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/network/api_exception.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/order.dart';
 import '../../models/paged_result.dart';
@@ -33,6 +34,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
 
   String _appliedSearch = '';
   String? _selectedStatus;
+  int _currentPage = 1;
 
   late Future<PagedResult<Order>> _orders = _repository.list();
 
@@ -44,6 +46,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
 
   void _loadPage(int page) {
     setState(() {
+      _currentPage = page;
       _orders = _repository.list(
         page: page,
         search: _appliedSearch,
@@ -55,6 +58,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   void _applySearch() {
     FocusScope.of(context).unfocus();
     setState(() {
+      _currentPage = 1;
       _appliedSearch = _searchController.text.trim();
       _orders = _repository.list(
         page: 1,
@@ -67,6 +71,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   void _clearSearch() {
     _searchController.clear();
     setState(() {
+      _currentPage = 1;
       _appliedSearch = '';
       _orders = _repository.list(page: 1, status: _selectedStatus);
     });
@@ -75,6 +80,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   void _selectStatus(String? status) {
     if (_selectedStatus == status) return;
     setState(() {
+      _currentPage = 1;
       _selectedStatus = status;
       _orders = _repository.list(
         page: 1,
@@ -168,9 +174,13 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                   }
                   final result = snapshot.data;
                   if (result == null) {
+                    final error = snapshot.error;
+                    final errorMsg = error is ApiException
+                        ? error.displayMessage
+                        : 'Không tải được lịch sử khám.';
                     return _LoadError(
-                      message: 'Không tải được lịch sử khám.',
-                      onRetry: () => _loadPage(1),
+                      message: errorMsg,
+                      onRetry: () => _loadPage(_currentPage),
                     );
                   }
                   if (result.items.isEmpty) {
@@ -211,14 +221,20 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                               ),
                             ),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => _OrderDetailPage(
-                                  id: order.id,
-                                  repository: _repository,
-                                ),
-                              ),
-                            ),
+                            onTap: () async {
+                              final updated = await Navigator.of(context)
+                                  .push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => _OrderDetailPage(
+                                        id: order.id,
+                                        repository: _repository,
+                                      ),
+                                    ),
+                                  );
+                              if (updated == true && mounted) {
+                                _loadPage(_currentPage);
+                              }
+                            },
                           ),
                         ),
                       if (result.hasPreviousPage || result.hasNextPage)
@@ -297,25 +313,44 @@ class _OrderDetailPage extends StatefulWidget {
 
 class _OrderDetailPageState extends State<_OrderDetailPage> {
   late Future<Order> _order = widget.repository.detail(widget.id);
+  bool _hasChanged = false;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Phiếu khám bệnh')),
-    body: SafeArea(
-      child: FutureBuilder<Order>(
-        future: _order,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final order = snapshot.data;
-          if (order != null) return OrderInfo(order: order);
-          return _LoadError(
-            message: 'Không tải được chi tiết lịch khám.',
-            onRetry: () =>
-                setState(() => _order = widget.repository.detail(widget.id)),
-          );
-        },
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, _) {
+      if (didPop) return;
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(_hasChanged);
+      }
+    },
+    child: Scaffold(
+      appBar: AppBar(title: const Text('Phiếu khám bệnh')),
+      body: SafeArea(
+        child: FutureBuilder<Order>(
+          future: _order,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final order = snapshot.data;
+            if (order != null) {
+              return OrderInfo(
+                order: order,
+                onPaymentCompleted: () => _hasChanged = true,
+              );
+            }
+            final error = snapshot.error;
+            final errorMsg = error is ApiException
+                ? error.displayMessage
+                : 'Không tải được chi tiết lịch khám.';
+            return _LoadError(
+              message: errorMsg,
+              onRetry: () =>
+                  setState(() => _order = widget.repository.detail(widget.id)),
+            );
+          },
+        ),
       ),
     ),
   );
@@ -328,11 +363,13 @@ class OrderInfo extends StatefulWidget {
     required this.order,
     this.action,
     this.paymentRepository,
+    this.onPaymentCompleted,
   });
 
   final Order order;
   final Widget? action;
   final PaymentRepository? paymentRepository;
+  final VoidCallback? onPaymentCompleted;
 
   @override
   State<OrderInfo> createState() => _OrderInfoState();
@@ -390,6 +427,7 @@ class _OrderInfoState extends State<OrderInfo> {
           transactionId: result.transactionId,
         );
       });
+      widget.onPaymentCompleted?.call();
     }
   }
 

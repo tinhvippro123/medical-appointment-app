@@ -156,28 +156,16 @@ class SessionHepler {
 
   static Future<bool> isAdmin() async {
     final user = await getCurrentUser();
-    if (user != null) {
-      return user.isAdmin;
-    }
-    final role = await getRole();
-    return role?.toUpperCase() == 'ADMIN';
+    return user?.isAdmin ?? false;
   }
 
   static Future<bool> isLoggedIn() async {
-    final token = await getToken();
-    if (token == null || token.isEmpty) {
-      return false;
-    }
-    final user = decodeToken(token);
-    if (user != null && user.isExpired) {
-      await clear(clearRemoteCart: false);
-      return false;
-    }
-    return true;
+    final user = await getCurrentUser();
+    return user != null;
   }
 
   static Future<void> clear({
-    bool clearRemoteCart = true,
+    bool clearRemoteCart = false,
     CartRepository? cartRepository,
   }) async {
     try {

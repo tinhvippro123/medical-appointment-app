@@ -22,7 +22,8 @@ class OrderRepository {
         'appointment': {
           'doctorId': doctorId,
           'patientProfileId': patientProfileId,
-          'appointmentDate': date.toIso8601String().split('T').first,
+          'appointmentDate':
+              '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
           'timeSlot': slot,
           if (note.isNotEmpty) 'note': note,
         },

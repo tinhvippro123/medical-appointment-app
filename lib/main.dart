@@ -1,5 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'core/network/api_client.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/admin_route_guard.dart';
+import 'helpers/session_helper.dart';
 import 'models/department.dart';
 import 'models/doctor.dart';
 import 'models/patient_profile.dart';
@@ -21,7 +25,40 @@ import 'screens/doctors/search/doctor_search_page.dart';
 import 'screens/home/home_page.dart';
 import 'screens/patient_profiles/patient_profiles_page.dart';
 
-void main() => runApp(const MyApp());
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+bool _handlingUnauthorized = false;
+
+Future<void> _handleGlobalUnauthorized() async {
+  if (_handlingUnauthorized) return;
+  _handlingUnauthorized = true;
+  try {
+    await SessionHepler.clear(clearRemoteCart: false);
+    final nav = appNavigatorKey.currentState;
+    if (nav != null) {
+      nav.pushNamedAndRemoveUntil('/login', (route) => false);
+    }
+  } finally {
+    _handlingUnauthorized = false;
+  }
+}
+
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
+}
+
+void main() {
+  ApiClient.onUnauthorized = _handleGlobalUnauthorized;
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   final Widget? home;
@@ -31,6 +68,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     const configuredRoute = String.fromEnvironment('INITIAL_ROUTE');
     return MaterialApp(
+      navigatorKey: home == null ? appNavigatorKey : null,
+      scrollBehavior: const AppScrollBehavior(),
       title: 'Y tế Hiệp Phước',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
@@ -50,12 +89,14 @@ class MyApp extends StatelessWidget {
             patient: patient is PatientProfile ? patient : null,
           );
         },
-        '/admin': (_) => const AdminDashboardPage(),
-        '/admin/users': (_) => const UserAdminPage(),
-        '/admin/roles': (_) => const RoleAdminPage(),
-        '/admin/departments': (_) => const DepartmentAdminPage(),
-        '/admin/doctors': (_) => const DoctorAdminPage(),
-        '/admin/orders': (_) => const AdminOrderPage(),
+        '/admin': (_) => const AdminRouteGuard(child: AdminDashboardPage()),
+        '/admin/users': (_) => const AdminRouteGuard(child: UserAdminPage()),
+        '/admin/roles': (_) => const AdminRouteGuard(child: RoleAdminPage()),
+        '/admin/departments': (_) =>
+            const AdminRouteGuard(child: DepartmentAdminPage()),
+        '/admin/doctors': (_) =>
+            const AdminRouteGuard(child: DoctorAdminPage()),
+        '/admin/orders': (_) => const AdminRouteGuard(child: AdminOrderPage()),
         '/admin/doctors/schedules': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
           int? doctorId;
@@ -77,7 +118,12 @@ class MyApp extends StatelessWidget {
           } else if (args is String) {
             doctorId = int.tryParse(args);
           }
-          return DoctorSchedulePage(doctorId: doctorId, doctorName: doctorName);
+          return AdminRouteGuard(
+            child: DoctorSchedulePage(
+              doctorId: doctorId,
+              doctorName: doctorName,
+            ),
+          );
         },
         '/doctors': (context) {
           final argument = ModalRoute.of(context)?.settings.arguments;

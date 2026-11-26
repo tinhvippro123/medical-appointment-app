@@ -22,7 +22,7 @@ class Room {
   String get displayLabel => 'Phòng $roomNumber (Tầng $floor)';
 
   factory Room.fromJson(Map<String, dynamic> json) => Room(
-    id: json['id'] as int,
+    id: (json['id'] as num?)?.toInt() ?? 0,
     roomNumber: (json['roomNumber'] ?? '').toString(),
     floor: (json['floor'] as num?)?.toInt() ?? 0,
     departmentId: (json['departmentId'] as num?)?.toInt() ?? 0,

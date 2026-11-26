@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/upload_image_picker.dart';
 import '../../../models/department.dart';
 import '../../../repositories/department_repository.dart';
@@ -93,8 +94,10 @@ class _DepartmentFormPageState extends State<DepartmentFormPage> {
             );
           }
         } catch (e) {
-          throw DepartmentApiException(
-            'Thông tin chuyên khoa đã lưu, nhưng chưa lưu được ảnh. Bạn có thể bấm Lưu để thử lại.\n$e',
+          throw ApiException(
+            statusCode: 500,
+            message:
+                'Thông tin chuyên khoa đã lưu, nhưng chưa lưu được ảnh. Bạn có thể bấm Lưu để thử lại.\n$e',
           );
         }
       }

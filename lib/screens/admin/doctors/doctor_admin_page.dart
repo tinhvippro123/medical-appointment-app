@@ -45,8 +45,10 @@ class _DoctorAdminPageState extends State<DoctorAdminPage> {
   bool _isLoading = true;
   bool _isLoadMore = false;
   String? _errorMessage;
+  String? _loadMoreError;
   int _currentPage = 1;
   bool _hasNextPage = false;
+  int _requestId = 0;
 
   @override
   void initState() {
@@ -65,47 +67,54 @@ class _DoctorAdminPageState extends State<DoctorAdminPage> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 150) {
-      if (_hasNextPage && !_isLoadMore && !_isLoading) {
+      if (_hasNextPage && !_isLoadMore && !_isLoading && _loadMoreError == null) {
         _loadMore();
       }
     }
   }
 
   Future<void> _loadPage(int page) async {
+    final activeRequestId = ++_requestId;
     setState(() {
       _isLoading = page == 1;
       _errorMessage = null;
+      _loadMoreError = null;
+      _isLoadMore = false;
     });
 
     try {
       final paged = await _doctorRepository.getDoctors(page: page, pageSize: 10);
-      if (mounted) {
-        setState(() {
-          _currentPage = paged.page;
-          _hasNextPage = paged.hasNextPage;
-          if (page == 1) {
-            _doctors = paged.items;
-          } else {
-            _doctors.addAll(paged.items);
-          }
-        });
-      }
+      if (!mounted || activeRequestId != _requestId) return;
+      setState(() {
+        _currentPage = paged.page;
+        _hasNextPage = paged.hasNextPage;
+        if (page == 1) {
+          _doctors = List<Doctor>.from(paged.items);
+        } else {
+          _doctors.addAll(paged.items);
+        }
+      });
     } catch (e) {
-      if (mounted) {
-        final message = e is ApiException
-            ? e.displayMessage
-            : 'Không thể tải danh sách bác sĩ. Vui lòng kiểm tra mạng.';
-        setState(() => _errorMessage = message);
-      }
+      if (!mounted || activeRequestId != _requestId) return;
+      final message = e is ApiException
+          ? e.displayMessage
+          : 'Không thể tải danh sách bác sĩ. Vui lòng kiểm tra mạng.';
+      setState(() => _errorMessage = message);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && activeRequestId == _requestId) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _loadMore() async {
     if (_isLoadMore || !_hasNextPage) return;
 
-    setState(() => _isLoadMore = true);
+    final activeRequestId = _requestId;
+    setState(() {
+      _isLoadMore = true;
+      _loadMoreError = null;
+    });
 
     try {
       final nextPage = _currentPage + 1;
@@ -114,17 +123,22 @@ class _DoctorAdminPageState extends State<DoctorAdminPage> {
         pageSize: 10,
       );
 
-      if (mounted) {
-        setState(() {
-          _currentPage = paged.page;
-          _hasNextPage = paged.hasNextPage;
-          _doctors.addAll(paged.items);
-        });
-      }
-    } catch (_) {
-      // Khi load more lỗi không ghi đè toàn bộ danh sách, chỉ ngừng spinner
+      if (!mounted || activeRequestId != _requestId) return;
+      setState(() {
+        _currentPage = paged.page;
+        _hasNextPage = paged.hasNextPage;
+        _doctors.addAll(paged.items);
+      });
+    } catch (e) {
+      if (!mounted || activeRequestId != _requestId) return;
+      final message = e is ApiException
+          ? e.displayMessage
+          : 'Không thể tải thêm bác sĩ.';
+      setState(() => _loadMoreError = message);
     } finally {
-      if (mounted) setState(() => _isLoadMore = false);
+      if (mounted && activeRequestId == _requestId) {
+        setState(() => _isLoadMore = false);
+      }
     }
   }
 
@@ -297,6 +311,33 @@ class _DoctorAdminPageState extends State<DoctorAdminPage> {
         itemCount: _doctors.length + (_hasNextPage ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == _doctors.length) {
+            if (_loadMoreError != null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      _loadMoreError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xffdc2626),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextButton.icon(
+                      key: const ValueKey('doctor-admin-load-more-retry'),
+                      onPressed: _loadMore,
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Thử tải thêm'),
+                    ),
+                  ],
+                ),
+              );
+            }
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(

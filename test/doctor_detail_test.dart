@@ -778,7 +778,10 @@ void main() {
     });
 
     testWidgets('Đã đăng nhập và route /booking chưa có -> hiện SnackBar "Chức năng đang phát triển" không crash', (tester) async {
-      SharedPreferences.setMockInitialValues({'jwt_token': 'valid_token_123'});
+      SharedPreferences.setMockInitialValues({
+        'jwt_token':
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6IlBBVElFTlQifQ.sig',
+      });
 
       final mockClient = MockClient((request) async {
         if (request.url.path == '/api/doctors/1') {
@@ -818,7 +821,10 @@ void main() {
     });
 
     testWidgets('Đã đăng nhập và route /booking đã đăng ký -> điều hướng sang /booking với arguments doctorId', (tester) async {
-      SharedPreferences.setMockInitialValues({'jwt_token': 'valid_token_123'});
+      SharedPreferences.setMockInitialValues({
+        'jwt_token':
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6IlBBVElFTlQifQ.sig',
+      });
       Object? capturedBookingDoctorId;
 
       final mockClient = MockClient((request) async {

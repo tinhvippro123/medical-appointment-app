@@ -7,17 +7,18 @@ import '../helpers/session_helper.dart';
 
 class CartItem {
   CartItem.fromJson(Map<String, dynamic> j)
-    : id = j['id'],
-      doctorId = j['doctorId'],
-      doctor = j['doctorFullName'],
-      avatar = j['doctorAvatarUrl'],
-      active = j['doctorIsActive'],
-      department = j['departmentName'],
-      fee = (j['consultationFee'] as num).toDouble(),
-      patient = j['patientProfileFullName'],
-      date = DateTime.parse(j['appointmentDate']),
-      slot = j['timeSlot'],
-      note = j['note'];
+    : id = (j['id'] as num?)?.toInt() ?? 0,
+      doctorId = (j['doctorId'] as num?)?.toInt() ?? 0,
+      doctor = (j['doctorFullName'] ?? '').toString(),
+      avatar = j['doctorAvatarUrl']?.toString(),
+      active = j['doctorIsActive'] as bool? ?? true,
+      department = (j['departmentName'] ?? '').toString(),
+      fee = (j['consultationFee'] as num?)?.toDouble() ?? 0,
+      patient = (j['patientProfileFullName'] ?? '').toString(),
+      date = DateTime.tryParse((j['appointmentDate'] ?? '').toString()) ??
+          DateTime.now(),
+      slot = (j['timeSlot'] ?? '').toString(),
+      note = j['note']?.toString();
   final int id, doctorId;
   final String doctor, department, patient, slot;
   final String? avatar, note;
@@ -28,12 +29,15 @@ class CartItem {
 
 class Schedule {
   Schedule.fromJson(Map<String, dynamic> j)
-    : day = j['dayOfWeek'],
-      start = j['startTime'],
-      end = j['endTime'];
+    : day = (j['dayOfWeek'] as num?)?.toInt() ?? 0,
+      start = (j['startTime'] ?? '').toString(),
+      end = (j['endTime'] ?? '').toString();
   final int day;
   final String start, end;
-  String get slot => '${start.substring(0, 5)}-${end.substring(0, 5)}';
+  String get slot =>
+      start.length >= 5 && end.length >= 5
+          ? '${start.substring(0, 5)}-${end.substring(0, 5)}'
+          : '$start-$end';
 }
 
 class CartException implements Exception {

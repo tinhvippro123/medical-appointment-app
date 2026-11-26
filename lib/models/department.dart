@@ -11,10 +11,10 @@ class Department {
   final String? description, imageUrl;
   final double? consultationFee;
   factory Department.fromJson(Map<String, dynamic> json) => Department(
-    id: json['id'] as int,
-    name: json['name'] as String,
-    description: json['description'] as String?,
-    imageUrl: json['imageUrl'] as String?,
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: (json['name'] ?? '').toString(),
+    description: json['description']?.toString(),
+    imageUrl: json['imageUrl']?.toString(),
     consultationFee: (json['consultationFee'] as num?)?.toDouble(),
   );
 }

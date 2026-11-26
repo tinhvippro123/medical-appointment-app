@@ -62,7 +62,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({'jwt_token': 'admin_jwt_token'});
+    SharedPreferences.setMockInitialValues({
+      'jwt_token':
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6IkFETUlOIn0.sig',
+    });
   });
 
   group('1. Parse Model & Gom hiển thị theo thứ', () {

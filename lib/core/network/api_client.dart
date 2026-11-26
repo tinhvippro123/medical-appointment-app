@@ -34,10 +34,14 @@ class MultipartFileItem {
 }
 
 class ApiClient {
+  /// Callback toàn cục khi nhận HTTP 401 trên request có đính kèm token (hết hạn / bị thu hồi phiên)
+  static Future<void> Function()? onUnauthorized;
+
   ApiClient({
     http.Client? client,
     String? baseUrl,
     Future<String?> Function()? tokenProvider,
+    this.onUnauthorizedCallback,
     this.defaultTimeout = const Duration(seconds: 30),
   }) : _client = client ?? http.Client(),
        _baseUrl = (baseUrl ?? AppConfig.baseUrl).replaceFirst(
@@ -49,6 +53,7 @@ class ApiClient {
   final http.Client _client;
   final String _baseUrl;
   final Future<String?> Function() _tokenProvider;
+  final Future<void> Function()? onUnauthorizedCallback;
   final Duration defaultTimeout;
 
   String get baseUrl => _baseUrl;
@@ -98,7 +103,7 @@ class ApiClient {
     return headers;
   }
 
-  dynamic _handleResponse(http.Response response) {
+  dynamic _handleResponse(http.Response response, {bool hadAuthHeader = false}) {
     dynamic decodedBody;
     final is2xx = response.statusCode >= 200 && response.statusCode < 300;
 
@@ -127,17 +132,25 @@ class ApiClient {
       return decodedBody;
     }
 
+    if (response.statusCode == 401 && hadAuthHeader) {
+      final handler = onUnauthorizedCallback ?? ApiClient.onUnauthorized;
+      if (handler != null) {
+        unawaited(handler().catchError((_) {}));
+      }
+    }
+
     // Ném ApiException khi statusCode < 200 hoặc >= 300 (bao gồm cả 401)
     throw ApiException.fromResponse(response.statusCode, decodedBody);
   }
 
   Future<dynamic> _send(http.BaseRequest request, {Duration? timeout}) async {
+    final hadAuthHeader = request.headers.containsKey('Authorization');
     try {
       final streamedResponse = await _client
           .send(request)
           .timeout(timeout ?? defaultTimeout);
       final response = await http.Response.fromStream(streamedResponse);
-      return _handleResponse(response);
+      return _handleResponse(response, hadAuthHeader: hadAuthHeader);
     } on ApiException {
       rethrow;
     } on TimeoutException {
@@ -148,6 +161,8 @@ class ApiClient {
       throw ApiException.network(e.message);
     } on HandshakeException catch (e) {
       throw ApiException.network(e.message);
+    } catch (_) {
+      throw ApiException.network();
     }
   }
 
@@ -192,6 +207,24 @@ class ApiClient {
   }) async {
     final uri = _resolveUri(path, queryParameters);
     final req = http.Request('PUT', uri);
+    req.headers.addAll(
+      await _buildHeaders(extraHeaders: headers, isJson: true),
+    );
+    if (body != null) {
+      req.body = body is String ? body : jsonEncode(body);
+    }
+    return _send(req, timeout: timeout);
+  }
+
+  Future<dynamic> patch(
+    String path, {
+    dynamic body,
+    Map<String, dynamic>? queryParameters,
+    Map<String, String>? headers,
+    Duration? timeout,
+  }) async {
+    final uri = _resolveUri(path, queryParameters);
+    final req = http.Request('PATCH', uri);
     req.headers.addAll(
       await _buildHeaders(extraHeaders: headers, isJson: true),
     );

@@ -89,7 +89,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({'jwt_token': 'valid_jwt_token'});
+    SharedPreferences.setMockInitialValues({
+      'jwt_token':
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6IlBBVElFTlQifQ.sig',
+    });
   });
 
   for (final width in [320.0, 1440.0]) {
