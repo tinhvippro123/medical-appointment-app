@@ -297,12 +297,10 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
   }
 
   Widget _buildBody() {
-    // 1. Trạng thái Loading ban đầu
     if (_isLoading && _doctors.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // 2. Trạng thái Lỗi khi chưa có dữ liệu
     if (_errorMessage != null && _doctors.isEmpty) {
       return Center(
         child: Padding(
@@ -337,7 +335,6 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
       );
     }
 
-    // 3. Trạng thái Rỗng
     if (_doctors.isEmpty) {
       return Center(
         child: Padding(
@@ -374,7 +371,6 @@ class _DoctorSearchPageState extends State<DoctorSearchPage> {
       );
     }
 
-    // 4. Trạng thái Thành công có danh sách
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.only(top: 8, bottom: 24),

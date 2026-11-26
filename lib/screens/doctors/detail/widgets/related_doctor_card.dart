@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../models/doctor.dart';
 
-/// Card nhỏ hiển thị bác sĩ liên quan trong ListView ngang
 class RelatedDoctorCard extends StatelessWidget {
   const RelatedDoctorCard({
     super.key,
@@ -39,7 +38,6 @@ class RelatedDoctorCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 1. Ảnh đại diện
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -66,7 +64,6 @@ class RelatedDoctorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
 
-                // 2. Tên bác sĩ
                 Text(
                   displayName,
                   textAlign: TextAlign.center,
@@ -81,7 +78,6 @@ class RelatedDoctorCard extends StatelessWidget {
                 ),
                 const Spacer(),
 
-                // 3. Kinh nghiệm
                 if (doctor.experienceYears > 0)
                   Text(
                     '${doctor.experienceYears} năm KN',
@@ -95,7 +91,6 @@ class RelatedDoctorCard extends StatelessWidget {
                   ),
                 const SizedBox(height: 3),
 
-                // 4. Phí khám
                 Text(
                   doctor.feeFormatted,
                   style: const TextStyle(

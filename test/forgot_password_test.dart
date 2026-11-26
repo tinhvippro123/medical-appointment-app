@@ -28,7 +28,7 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  group('1. Card A11 Validators & AuthRepository Unit Tests', () {
+  group('Validators & AuthRepository Unit Tests', () {
     test('validateRequiredEmail và validateOtp6 kiểm tra đúng định dạng', () {
       expect(FormValidators.validateRequiredEmail(''), isNotNull);
       expect(FormValidators.validateRequiredEmail('sai-email'), isNotNull);
@@ -141,7 +141,7 @@ void main() {
     });
   });
 
-  group('2. Card A11 LoginPage -> ForgotPasswordPage Widget Tests', () {
+  group('LoginPage -> ForgotPasswordPage Widget Tests', () {
     testWidgets(
       'Từ LoginPage bấm Quên mật khẩu, gửi OTP, kiểm tra validate và đặt lại mật khẩu thành công',
       (tester) async {

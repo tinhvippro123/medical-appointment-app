@@ -113,11 +113,7 @@ String formatMinutesToHHmm(int totalMinutes) {
   return '$h:$m';
 }
 
-/// Kiểm tra một ngày trên Calendar có thể chọn được hay không.
-/// Điều kiện:
-/// 1. Nằm trong `[firstDate, lastDate]` (tính theo ngày, chặn quá khứ và ngoài phạm vi).
-/// 2. Không nằm trong [dayOffDates] của bác sĩ.
-/// 3. Thứ trong tuần khớp ít nhất 1 lịch làm việc trong [schedules].
+// Ngày hợp lệ trên Calendar: thuộc [firstDate, lastDate], không phải ngày nghỉ và có lịch làm việc trong thứ đó.
 bool isBookingDaySelectable({
   required DateTime day,
   required List<DoctorSchedule> schedules,

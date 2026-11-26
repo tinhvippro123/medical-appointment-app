@@ -102,7 +102,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     }
   }
 
-  /// Tải thông tin chi tiết bác sĩ
   Future<void> _loadDoctorDetail() async {
     if (_doctorId == null) return;
     final requestId = ++_currentRequestId;
@@ -172,7 +171,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     }
   }
 
-  /// Tải danh sách bác sĩ liên quan cùng chuyên khoa (trang 1)
   Future<void> _loadRelatedDoctors(int requestId) async {
     if (_doctorId == null) return;
 
@@ -206,7 +204,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     }
   }
 
-  /// Tải thêm trang tiếp theo cho danh sách bác sĩ liên quan
   Future<void> _loadMoreRelatedDoctors() async {
     if (_doctorId == null ||
         _isLoadingRelated ||
@@ -236,7 +233,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     }
   }
 
-  /// Xử lý sự kiện nhấn nút Đặt lịch khám
   Future<void> _handleBooking() async {
     if (_doctor == null) return;
 
@@ -288,14 +284,12 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
   }
 
   Widget _buildBody() {
-    // 1. Trạng thái Loading
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
 
-    // 2. Trạng thái Không tìm thấy bác sĩ (404 DOCTOR_NOT_FOUND)
     if (_isNotFound) {
       return Center(
         child: Padding(
@@ -336,7 +330,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
       );
     }
 
-    // 3. Trạng thái Lỗi tải dữ liệu
     if (_errorMessage != null) {
       return Center(
         child: Padding(
@@ -371,7 +364,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
       );
     }
 
-    // 4. Trạng thái Thành công
     final doctor = _doctor!;
     final doctorTitle = doctor.qualification != null &&
             doctor.qualification!.trim().isNotEmpty
@@ -383,25 +375,16 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 4.1 Header: Ảnh đại diện lớn + Tên bác sĩ + Chuyên khoa
           _buildHeader(doctor, doctorTitle),
           const SizedBox(height: 20),
-
-          // 4.2 Section Thông tin chi tiết
           _buildInfoSection(doctor),
           const SizedBox(height: 16),
-
-          // 4.3 Section Phòng khám
           _buildRoomSection(doctor),
           const SizedBox(height: 16),
-
-          // 4.4 Section Lịch làm việc
           _buildScheduleSection(doctor),
           const SizedBox(height: 16),
           _buildDayOffsSection(),
           const SizedBox(height: 20),
-
-          // 4.5 Section Bác sĩ liên quan (cùng khoa)
           _buildRelatedSection(),
           const SizedBox(height: 16),
         ],
@@ -409,7 +392,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     );
   }
 
-  /// Header: ảnh đại diện lớn và tên BS
   Widget _buildHeader(Doctor doctor, String doctorTitle) {
     final avatarUrl = _repository.imageUrl(doctor.avatarUrl);
 
@@ -485,7 +467,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     );
   }
 
-  /// Section Thông tin bác sĩ
   Widget _buildInfoSection(Doctor doctor) {
     return _buildCardWrapper(
       title: 'Thông tin bác sĩ',
@@ -565,7 +546,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     );
   }
 
-  /// Section Phòng khám
   Widget _buildRoomSection(Doctor doctor) {
     return _buildCardWrapper(
       title: 'Phòng khám',
@@ -603,7 +583,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     );
   }
 
-  /// Section Lịch làm việc
   Widget _buildScheduleSection(Doctor doctor) {
     final grouped = doctor.groupedSchedules;
 
@@ -688,7 +667,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     ),
   );
 
-  /// Section Bác sĩ liên quan (cùng khoa)
   Widget _buildRelatedSection() {
     // Ẩn hoàn toàn section nếu danh sách rỗng và không có lỗi, không đang tải
     if (_relatedDoctors.isEmpty &&
@@ -861,7 +839,6 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     );
   }
 
-  /// Nút Đặt lịch khám cố định ở đáy màn hình
   Widget _buildBottomBar() {
     return Container(
       padding: EdgeInsets.only(

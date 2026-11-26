@@ -193,7 +193,6 @@ class _ScheduleFormSheetState extends State<ScheduleFormSheet> {
               ),
               const SizedBox(height: 12),
 
-              // 1. Dropdown Thứ trong tuần
               DropdownButtonFormField<int>(
                 key: const ValueKey('schedule-day-dropdown'),
                 initialValue: _selectedDayOfWeek,
@@ -221,7 +220,6 @@ class _ScheduleFormSheetState extends State<ScheduleFormSheet> {
               ),
               const SizedBox(height: 16),
 
-              // 2. Giờ bắt đầu & Giờ kết thúc (TimeOfDay picker)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -265,7 +263,6 @@ class _ScheduleFormSheetState extends State<ScheduleFormSheet> {
               ),
               const SizedBox(height: 16),
 
-              // 3. Số bệnh nhân tối đa
               TextFormField(
                 key: const ValueKey('schedule-max-patients-field'),
                 controller: _maxPatientsController,

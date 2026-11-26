@@ -142,7 +142,6 @@ class _DayOffFormSheetState extends State<DayOffFormSheet> {
               ),
               const SizedBox(height: 12),
 
-              // 1. Chọn ngày nghỉ (DatePicker từ hôm nay)
               TextFormField(
                 key: const ValueKey('day-off-date-field'),
                 controller: _dateController,
@@ -161,7 +160,6 @@ class _DayOffFormSheetState extends State<DayOffFormSheet> {
               ),
               const SizedBox(height: 16),
 
-              // 2. Lý do nghỉ
               TextFormField(
                 key: const ValueKey('day-off-reason-field'),
                 controller: _reasonController,

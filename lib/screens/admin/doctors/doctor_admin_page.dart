@@ -213,12 +213,10 @@ class _DoctorAdminPageState extends State<DoctorAdminPage> {
   }
 
   Widget _buildBody() {
-    // 1. Loading ban đầu
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // 2. Error ban đầu
     if (_errorMessage != null) {
       return Center(
         child: Padding(
@@ -253,7 +251,6 @@ class _DoctorAdminPageState extends State<DoctorAdminPage> {
       );
     }
 
-    // 3. Empty state
     if (_doctors.isEmpty) {
       return Center(
         child: SingleChildScrollView(
@@ -302,7 +299,6 @@ class _DoctorAdminPageState extends State<DoctorAdminPage> {
       );
     }
 
-    // 4. Success list
     return RefreshIndicator(
       onRefresh: () => _loadPage(1),
       child: ListView.builder(

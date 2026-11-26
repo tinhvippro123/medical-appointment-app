@@ -39,7 +39,6 @@ class DoctorAdminCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Ảnh đại diện
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
@@ -65,7 +64,6 @@ class DoctorAdminCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 14),
 
-                  // 2. Thông tin chính
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,7 +166,6 @@ class DoctorAdminCard extends StatelessWidget {
               const Divider(height: 1, thickness: 0.8),
               const SizedBox(height: 10),
 
-              // 3. Phí khám, kinh nghiệm và các nút thao tác
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

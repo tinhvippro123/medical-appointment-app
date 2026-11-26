@@ -28,7 +28,7 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  group('1. Card A12 AuthRepository Email Verification Unit Tests', () {
+  group('AuthRepository Email Verification Unit Tests', () {
     test(
       'registerRequest trả về requiresEmailVerification, verifyEmailRequest và resendVerificationOtpRequest hoạt động đúng',
       () async {
@@ -116,7 +116,7 @@ void main() {
     );
   });
 
-  group('2. Card A12 RegisterPage -> VerifyEmailPage -> LoginPage Widget Tests', () {
+  group('RegisterPage -> VerifyEmailPage -> LoginPage Widget Tests', () {
     testWidgets(
       'Đăng ký tài khoản mới gửi kèm Email -> mở VerifyEmailPage -> gửi lại OTP & xác thực kích hoạt thành công',
       (tester) async {

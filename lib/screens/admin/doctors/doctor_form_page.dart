@@ -296,7 +296,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Ảnh đại diện
               UploadImagePicker(
                 currentImageUrl: _doctorRepository.imageUrl(widget.doctor?.avatarUrl),
                 selection: _selectedImage,
@@ -307,7 +306,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               ),
               const SizedBox(height: 24),
 
-              // 2. Họ và tên
               TextFormField(
                 key: const ValueKey('doctor-name-field'),
                 controller: _fullNameController,
@@ -329,7 +327,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // 3. Bằng cấp (Qualification)
               TextFormField(
                 key: const ValueKey('doctor-qualification-field'),
                 controller: _qualificationController,
@@ -348,7 +345,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // 4. Email & Số điện thoại
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -406,7 +402,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // 5. Dropdown Chuyên khoa (bắt buộc)
               DropdownButtonFormField<int>(
                 key: const ValueKey('doctor-department-dropdown'),
                 initialValue: _selectedDepartmentId,
@@ -434,7 +429,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // 6. Dropdown Phòng khám (cascade theo Khoa)
               DropdownButtonFormField<int>(
                 key: const ValueKey('doctor-room-dropdown'),
                 initialValue: _selectedRoomId,
@@ -471,7 +465,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // 7. Năm kinh nghiệm & Phí khám
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -526,7 +519,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // 8. Mô tả
               TextFormField(
                 key: const ValueKey('doctor-description-field'),
                 controller: _descriptionController,
@@ -546,7 +538,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               ),
               const SizedBox(height: 28),
 
-              // 9. Nút Submit
               FilledButton(
                 key: const ValueKey('submit-doctor-button'),
                 onPressed: _isSubmitting ? null : _submit,

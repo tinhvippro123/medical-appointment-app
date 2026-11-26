@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../models/doctor.dart';
 
-/// Card hiển thị thông tin tóm tắt bác sĩ dành cho người bệnh tìm kiếm
 class DoctorSearchCard extends StatelessWidget {
   const DoctorSearchCard({
     super.key,
@@ -33,7 +32,6 @@ class DoctorSearchCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Ảnh đại diện bác sĩ
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
@@ -59,7 +57,6 @@ class DoctorSearchCard extends StatelessWidget {
               ),
               const SizedBox(width: 14),
 
-              // 2. Thông tin chi tiết bác sĩ
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,7 +147,6 @@ class DoctorSearchCard extends StatelessWidget {
                 ),
               ),
 
-              // 3. Mũi tên điều hướng sang chi tiết
               const Padding(
                 padding: EdgeInsets.only(top: 24, left: 4),
                 child: Icon(

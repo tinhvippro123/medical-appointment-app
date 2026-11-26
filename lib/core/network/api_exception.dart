@@ -11,26 +11,22 @@ class ApiException implements Exception {
     this.fieldErrors = const {},
   });
 
-  /// Factory parse từ HTTP status code và dynamic decoded response body
   factory ApiException.fromResponse(int statusCode, dynamic body) {
     String? errorCode;
     String message = 'Đã có lỗi xảy ra. Vui lòng thử lại.';
     final fieldErrors = <String, List<String>>{};
 
     if (body is Map<String, dynamic>) {
-      // 1. Mã lỗi nghiệp vụ
       if (body['errorCode'] is String) {
         errorCode = body['errorCode'] as String;
       }
 
-      // 2. Message nghiệp vụ
       if (body['message'] is String && (body['message'] as String).trim().isNotEmpty) {
         message = (body['message'] as String).trim();
       } else if (body['title'] is String && (body['title'] as String).trim().isNotEmpty) {
         message = (body['title'] as String).trim();
       }
 
-      // 3. ValidationProblemDetails (errors: { "Field": ["Error 1", "Error 2"] })
       if (body['errors'] is Map) {
         final rawErrors = body['errors'] as Map;
         for (final entry in rawErrors.entries) {
@@ -66,19 +62,16 @@ class ApiException implements Exception {
     );
   }
 
-  /// Factory cho lỗi kết nối mạng
   factory ApiException.network([String? detail]) => ApiException(
     statusCode: 0,
     message: detail ?? 'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.',
   );
 
-  /// Factory cho lỗi quá thời gian chờ (Timeout)
   factory ApiException.timeout() => const ApiException(
     statusCode: 408,
     message: 'Kết nối quá thời gian. Vui lòng thử lại.',
   );
 
-  /// Getter trả về thông báo lỗi tiếng Việt gộp các lỗi trường
   String get displayMessage {
     if (fieldErrors.isNotEmpty) {
       final allErrors = fieldErrors.values
@@ -91,7 +84,6 @@ class ApiException implements Exception {
     return message;
   }
 
-  /// Alias cho displayMessage
   String get combinedMessage => displayMessage;
 
   @override

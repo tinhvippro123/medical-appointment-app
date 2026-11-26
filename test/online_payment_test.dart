@@ -39,7 +39,7 @@ void main() {
     paymentStatus: 'Unpaid',
   );
 
-  group('1. Card D10 PaymentRepository Unit Tests', () {
+  group('PaymentRepository Unit Tests', () {
     test('Khởi tạo VietQR, VNPay và xác thực chữ ký callback thành công', () async {
       final client = MockClient((req) async {
         if (req.url.path == '/api/payments/vietqr') {
@@ -106,7 +106,7 @@ void main() {
     });
   });
 
-  group('2. Card D10 VietQR & VNPay (Card + OTP) Widget Tests', () {
+  group('VietQR & VNPay (Card + OTP) Widget Tests', () {
     testWidgets('VietQR chỉ hiển thị mã QR, không hiện form thẻ VNPay', (
       tester,
     ) async {

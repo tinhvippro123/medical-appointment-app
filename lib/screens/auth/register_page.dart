@@ -144,7 +144,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
 
-                // 1. LOGO VÀ TIÊU ĐỀ THƯƠNG HIỆU (ĐỒNG BỘ 100% VỚI LOGIN)
                 const Center(child: CommunityLogo(size: 64)),
                 const SizedBox(height: 14),
                 const Text(
@@ -165,7 +164,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 const SizedBox(height: 28),
 
-                // 2. TIÊU ĐỀ FORM ĐĂNG KÝ (CĂN GIỮA ĐỐI XỨNG)
                 const Text(
                   'Tạo Tài Khoản Mới',
                   textAlign: TextAlign.center,

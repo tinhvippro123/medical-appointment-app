@@ -1211,7 +1211,7 @@ void main() {
     });
   });
 
-  group('7. Tìm kiếm theo từ khóa & Lọc theo khoảng ngày (Card A13)', () {
+  group('7. Tìm kiếm theo từ khóa & Lọc theo khoảng ngày', () {
     test(
       'AdminOrderRepository.getOrders truyền đúng keyword, fromDate, toDate và bỏ qua từ khóa rỗng',
       () async {
