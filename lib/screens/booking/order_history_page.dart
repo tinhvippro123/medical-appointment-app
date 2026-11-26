@@ -204,6 +204,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   OrderStatusChip(status: order.status),
+                                  _PaymentStatusBadge(order: order),
                                   Text('${order.appointmentCount} lịch hẹn'),
                                   Text(order.totalAmountFormatted),
                                 ],
@@ -249,6 +250,38 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
       ),
     ),
   );
+  }
+}
+
+class _PaymentStatusBadge extends StatelessWidget {
+  const _PaymentStatusBadge({required this.order});
+
+  final Order order;
+
+  @override
+  Widget build(BuildContext context) {
+    final isPaid = order.isPaid;
+    final bgColor = isPaid ? const Color(0xffdcfce7) : const Color(0xfff1f5f9);
+    final fgColor = isPaid ? const Color(0xff15803d) : const Color(0xff475569);
+    final borderColor = isPaid
+        ? const Color(0xffbbf7d0)
+        : const Color(0xffe2e8f0);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
+      ),
+      child: Text(
+        '${order.paymentStatusLabel} · ${order.paymentMethodLabel}',
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          color: fgColor,
+        ),
+      ),
+    );
   }
 }
 
