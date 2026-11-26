@@ -63,14 +63,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
           ),
         );
-        if (!mounted) return;
-        if (paymentResult != null && paymentResult.success) {
-          finalOrder = order.copyWith(
-            paymentMethod: paymentResult.paymentMethod,
-            paymentStatus: paymentResult.paymentStatus,
-            transactionId: paymentResult.transactionId,
-          );
+
+        if (paymentResult == null || !paymentResult.success) {
+          try {
+            await _repository.discardUnpaid(order.id);
+          } catch (_) {
+            // Best-effort dọn đơn tạm chưa thanh toán
+          }
+          if (!mounted) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Giao dịch chưa hoàn tất nên lịch hẹn tạm đã được hủy. Vui lòng xác nhận lại để đặt lịch.',
+                ),
+              ),
+            );
+          return;
         }
+
+        if (!mounted) return;
+        finalOrder = order.copyWith(
+          paymentMethod: paymentResult.paymentMethod,
+          paymentStatus: paymentResult.paymentStatus,
+          transactionId: paymentResult.transactionId,
+        );
       }
 
       Navigator.of(context).pushAndRemoveUntil(
@@ -190,7 +208,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   child: Text(
                     _paymentMethod == 'Cash'
                         ? 'Thanh toán trực tiếp tại quầy tiếp nhận khi đến khám.'
-                        : 'Sau khi bấm xác nhận, màn hình thanh toán $_paymentMethod sẽ mở ngay để bạn hoàn tất giao dịch.',
+                        : 'Sau khi bấm xác nhận, màn hình thanh toán $_paymentMethod sẽ mở ngay. Chỉ khi hoàn tất thanh toán phiếu khám mới được ghi nhận.',
                   ),
                 ),
               ],

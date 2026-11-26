@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/community_logo.dart';
 import '../../helpers/session_helper.dart';
+import '../../models/auth_models.dart';
 import '../../models/user_role_models.dart';
 import '../../repositories/auth_repository.dart';
 import '../admin/admin_dashboard_page.dart';
+import '../auth/forgot_password_page.dart';
 import '../auth/login_page.dart';
-import '../booking/order_history_page.dart';
-import '../home/widgets/home_header.dart';
 import 'change_password_page.dart';
+import 'legal_document_page.dart';
+import 'personal_info_page.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({
@@ -34,6 +38,8 @@ class _AccountPageState extends State<AccountPage> {
   SessionUser? _user;
   bool _loading = true;
   bool _loggingOut = false;
+  String? _successBannerMessage;
+  Timer? _bannerTimer;
 
   @override
   void initState() {
@@ -55,6 +61,12 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
+  @override
+  void dispose() {
+    _bannerTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadUser() async {
     final user = await SessionHepler.getCurrentUser();
     if (!mounted) {
@@ -64,6 +76,52 @@ class _AccountPageState extends State<AccountPage> {
       _user = user;
       _loading = false;
     });
+  }
+
+  void _showTopSuccessToast(String message) {
+    _bannerTimer?.cancel();
+    setState(() => _successBannerMessage = message);
+    _bannerTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        setState(() => _successBannerMessage = null);
+      }
+    });
+  }
+
+  Future<void> _openPersonalInfoWithPasswordCheck(SessionUser user) async {
+    final verified = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => _PasswordVerifyDialog(authRepository: _authRepo),
+    );
+
+    if (verified != true || !mounted) {
+      return;
+    }
+
+    final updatedProfile = await Navigator.of(context).push<MyProfile>(
+      MaterialPageRoute(
+        builder: (_) => PersonalInfoPage(
+          initialUser: user,
+          authRepository: _authRepo,
+        ),
+      ),
+    );
+
+    if (updatedProfile != null && mounted) {
+      final refreshedUser = await SessionHepler.getCurrentUser();
+      if (!mounted) return;
+      setState(() {
+        _user = refreshedUser ??
+            SessionUser(
+              userId: updatedProfile.id,
+              fullName: updatedProfile.fullName,
+              phone: updatedProfile.phone,
+              roleKey: updatedProfile.roleKey,
+            );
+      });
+      _showTopSuccessToast('Cập nhật thông tin thành công.');
+    }
   }
 
   Future<void> _logout() async {
@@ -103,63 +161,6 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
-  void _openCenterInfoDialog() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Trung tâm Y tế Xã Hiệp Phước'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Hệ thống đặt lịch khám bệnh trực tuyến.'),
-            SizedBox(height: 8),
-            Text(
-              'Giờ làm việc và thông tin liên hệ chi tiết được hiển thị tại Trang chủ.',
-              style: TextStyle(color: AppColors.muted),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openHistory() {
-    if (widget.onOpenHistory != null) {
-      widget.onOpenHistory!();
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('Lịch sử khám')),
-          body: const SafeArea(child: OrderHistoryPage()),
-        ),
-      ),
-    );
-  }
-
-  void _openBills() {
-    if (widget.onOpenBills != null) {
-      widget.onOpenBills!();
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const FeaturePlaceholder(
-          title: 'Hóa đơn',
-          icon: Icons.receipt_long_outlined,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -171,394 +172,384 @@ class _AccountPageState extends State<AccountPage> {
       return _buildGuestView();
     }
 
-    final displayName = user.fullName.trim().isNotEmpty
-        ? user.fullName.trim()
-        : 'Người dùng';
-    final initial = displayName[0].toUpperCase();
+    final cleanName = user.fullName.trim();
+    final maskedPhone = maskPhoneNumber(user.phone);
 
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        _AccountGradientHeader(
-          child: Row(
+    return ColoredBox(
+      color: const Color(0xfff4f7fb),
+      child: Stack(
+        children: [
+          ListView(
+            padding: EdgeInsets.zero,
             children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: Colors.white,
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                  ),
-                ),
+              _UmcCurvedHeader(
+                fullName: cleanName,
+                maskedPhone: maskedPhone,
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      user.phone.isNotEmpty ? user.phone : 'Chưa cập nhật SĐT',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xffd6ebff),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        user.roleDisplayName,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 680),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 30),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (user.isAdmin) ...[
+                          _GroupCard(
+                            children: [
+                              _MenuRow(
+                                icon: Icons.admin_panel_settings_rounded,
+                                title: 'Mở trang Quản trị (Admin)',
+                                onTap: () =>
+                                    Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (_) => AdminDashboardPage(
+                                      currentUser: user,
+                                      authRepository: _authRepo,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                        ],
+
+                        const _GroupHeading('Tài khoản'),
+                        const SizedBox(height: 8),
+                        _GroupCard(
+                          children: [
+                            _MenuRow(
+                              rowKey: const ValueKey('account-personal-info-row'),
+                              icon: Icons.person_rounded,
+                              title: 'Thông tin cá nhân',
+                              onTap: () =>
+                                  _openPersonalInfoWithPasswordCheck(user),
+                            ),
+                            const _MenuDivider(),
+                            _MenuRow(
+                              rowKey: const ValueKey('account-change-pw-row'),
+                              icon: Icons.vpn_key_rounded,
+                              title: 'Thay đổi mật khẩu',
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ChangePasswordPage(
+                                    authRepository: _authRepo,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const _MenuDivider(),
+                            _MenuRow(
+                              icon: Icons.assignment_ind_rounded,
+                              title: 'Hồ sơ bệnh nhân',
+                              onTap: () => Navigator.of(
+                                context,
+                              ).pushNamed('/patient-profiles'),
+                            ),
+                          ],
                         ),
-                      ),
+                        const SizedBox(height: 18),
+
+                        const _GroupHeading('Thông tin pháp lý'),
+                        const SizedBox(height: 8),
+                        _GroupCard(
+                          children: [
+                            _MenuRow(
+                              icon: Icons.description_rounded,
+                              title: 'Điều khoản dịch vụ',
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      LegalDocumentPage.termsOfService(),
+                                ),
+                              ),
+                            ),
+                            const _MenuDivider(),
+                            _MenuRow(
+                              icon: Icons.description_rounded,
+                              title: 'Chính sách bảo mật',
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      LegalDocumentPage.privacyPolicy(),
+                                ),
+                              ),
+                            ),
+                            const _MenuDivider(),
+                            _MenuRow(
+                              icon: Icons.description_rounded,
+                              title: 'Quy định sử dụng',
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      LegalDocumentPage.usageRules(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+
+                        const _GroupHeading('Ứng dụng'),
+                        const SizedBox(height: 8),
+                        const _GroupCard(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 14,
+                              ),
+                              child: Row(
+                                children: [
+                                  _BlueIconBox(
+                                    icon: Icons.rocket_launch_outlined,
+                                  ),
+                                  SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      'Phiên bản',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.text,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    'v1.0.0',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xff64748b),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        _GroupCard(
+                          borderColor: const Color(0xfffde2e2),
+                          children: [
+                            InkWell(
+                              key: const ValueKey('account-logout-row'),
+                              onTap: _loggingOut ? null : _logout,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 14,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xfffee2e2),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: _loggingOut
+                                          ? const Padding(
+                                              padding: EdgeInsets.all(10),
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Color(0xffef4444),
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.logout_rounded,
+                                              size: 20,
+                                              color: Color(0xffef4444),
+                                            ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    const Expanded(
+                                      child: Text(
+                                        'Đăng xuất',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.text,
+                                        ),
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: Color(0xff94a3b8),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (user.isAdmin) ...[
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xffeaf5ff),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xffbfdbfe)),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(18),
-                          onTap: () => Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => AdminDashboardPage(
-                                currentUser: user,
-                                authRepository: _authRepo,
+
+          // Thông báo nổi phía trên (giống ảnh 10 UMC Care)
+          if (_successBannerMessage != null)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: Material(
+                      elevation: 6,
+                      shadowColor: Colors.black26,
+                      color: const Color(0xfff0fdf4),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        key: const ValueKey('account-top-success-banner'),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xffbbf7d0)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xffdcfce7),
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              child: const Icon(
+                                Icons.check_rounded,
+                                color: Color(0xff16a34a),
+                                size: 24,
                               ),
                             ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.admin_panel_settings_outlined,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Text(
-                                    'Mở trang Quản trị (Admin)',
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Thông báo',
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 14.5,
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.text,
                                     ),
                                   ),
-                                ),
-                                const Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: AppColors.primary,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                  ],
-                  const _SectionTitle('Tiện ích khám bệnh'),
-                  const SizedBox(height: 10),
-                  _SectionCard(
-                    children: [
-                      _AccountMenuRow(
-                        icon: Icons.folder_shared_outlined,
-                        title: 'Hồ sơ bệnh nhân',
-                        onTap: () =>
-                            Navigator.of(context).pushNamed('/patient-profiles'),
-                      ),
-                      const Divider(height: 1, color: Color(0xffeaf1f8)),
-                      _AccountMenuRow(
-                        icon: Icons.history_rounded,
-                        title: 'Lịch sử đặt khám',
-                        onTap: _openHistory,
-                      ),
-                      const Divider(height: 1, color: Color(0xffeaf1f8)),
-                      _AccountMenuRow(
-                        icon: Icons.receipt_long_outlined,
-                        title: 'Hóa đơn thanh toán',
-                        onTap: _openBills,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  const _SectionTitle('Cài đặt tài khoản'),
-                  const SizedBox(height: 10),
-                  _SectionCard(
-                    children: [
-                      _AccountMenuRow(
-                        icon: Icons.lock_outline_rounded,
-                        title: 'Đổi mật khẩu',
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                ChangePasswordPage(authRepository: _authRepo),
-                          ),
-                        ),
-                      ),
-                      const Divider(height: 1, color: Color(0xffeaf1f8)),
-                      _AccountMenuRow(
-                        icon: Icons.local_hospital_outlined,
-                        title: 'Trung tâm Y tế Xã Hiệp Phước',
-                        onTap: _openCenterInfoDialog,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  SizedBox(
-                    height: 52,
-                    child: OutlinedButton.icon(
-                      onPressed: _loggingOut ? null : _logout,
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: const Color(0xfffef2f2),
-                        foregroundColor: const Color(0xffdc2626),
-                        side: const BorderSide(color: Color(0xfffecaca)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      icon: _loggingOut
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xffdc2626),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _successBannerMessage!,
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      color: Color(0xff475569),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            )
-                          : const Icon(Icons.logout_rounded),
-                      label: const Text(
-                        'Đăng xuất',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                            ),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: () =>
+                                  setState(() => _successBannerMessage = null),
+                              child: Container(
+                                width: 26,
+                                height: 26,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xffe2e8f0),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 15,
+                                  color: Color(0xff64748b),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Y tế Hiệp Phước • Phiên bản 1.0.0',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildGuestView() {
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        const _AccountGradientHeader(
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: Colors.white,
-                child: Icon(
-                  Icons.person_outline_rounded,
-                  size: 30,
-                  color: AppColors.primary,
-                ),
-              ),
-              SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Chào mừng đến Y tế Hiệp Phước',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Đăng nhập để đặt lịch khám và theo dõi hồ sơ',
-                      style: TextStyle(fontSize: 13, color: Color(0xffd6ebff)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    return ColoredBox(
+      color: const Color(0xfff4f7fb),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const _UmcCurvedHeader(
+            fullName: 'Y tế Hiệp Phước',
+            maskedPhone: 'Chưa đăng nhập tài khoản',
           ),
-        ),
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xffdfedf8)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: .04),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Bạn chưa đăng nhập',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xff349ff0), Color(0xff2369d5)],
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Đăng nhập để quản lý thông tin cá nhân và lịch khám',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.text,
                         ),
-                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () => Navigator.of(context).pushAndRemoveUntil(
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xff0b57d0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: () =>
+                              Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(
                               builder: (_) => const LoginPage(),
                             ),
                             (route) => false,
                           ),
-                          child: const Center(
-                            child: Text(
-                              'Đăng nhập ngay',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
+                          child: const Text(
+                            'Đăng nhập ngay',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AccountGradientHeader extends StatelessWidget {
-  const _AccountGradientHeader({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xff349ff0), Color(0xff2369d5)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      child: Stack(
-        children: [
-          const Positioned(
-            right: 26,
-            top: 14,
-            child: Icon(Icons.add_rounded, size: 36, color: Color(0x187fffff)),
-          ),
-          const Positioned(
-            right: 78,
-            bottom: 12,
-            child: Icon(Icons.add_rounded, size: 22, color: Color(0x147fffff)),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Tài khoản',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  child,
-                ],
+                ),
               ),
             ),
           ),
@@ -568,28 +559,371 @@ class _AccountGradientHeader extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+class _UmcCurvedHeader extends StatelessWidget {
+  const _UmcCurvedHeader({
+    required this.fullName,
+    required this.maskedPhone,
+  });
 
-  final String text;
+  final String fullName;
+  final String maskedPhone;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-        color: AppColors.text,
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xff2c8cf4), Color(0xff0f62d6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: -45,
+            top: -35,
+            child: Container(
+              width: 190,
+              height: 190,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -35,
+            bottom: -45,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+              child: SizedBox(
+                width: double.infinity,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 92,
+                      height: 92,
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.24),
+                      ),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CommunityLogo(size: 44),
+                            SizedBox(height: 2),
+                            Text(
+                              'HIỆP PHƯỚC',
+                              style: TextStyle(
+                                fontSize: 7.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xff0f62d6),
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    if (fullName.isNotEmpty) ...[
+                      Text(
+                        fullName,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    Text(
+                      maskedPhone,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xffe8f2ff),
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.children});
+class _PasswordVerifyDialog extends StatefulWidget {
+  const _PasswordVerifyDialog({required this.authRepository});
+
+  final AuthRepository authRepository;
+
+  @override
+  State<_PasswordVerifyDialog> createState() => _PasswordVerifyDialogState();
+}
+
+class _PasswordVerifyDialogState extends State<_PasswordVerifyDialog> {
+  final _passwordController = TextEditingController();
+  bool _obscure = true;
+  bool _submitting = false;
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _verify() async {
+    final pw = _passwordController.text;
+    if (pw.isEmpty) {
+      setState(() => _errorText = 'Vui lòng nhập mật khẩu');
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _errorText = null;
+    });
+
+    try {
+      await widget.authRepository.verifyPasswordRequest(pw);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorText = '$e');
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 36),
+                    child: Text(
+                      'NHẬP MẬT KHẨU',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.text,
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => Navigator.of(context).pop(false),
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: const BoxDecoration(
+                          color: Color(0xfff1f5f9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: Color(0xff64748b),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Divider(height: 1, color: Color(0xffeef2f6)),
+              const SizedBox(height: 16),
+              const Text(
+                'Để tiếp tục, vui lòng nhập mật khẩu để xác thực bạn là chủ tài khoản',
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.45,
+                  color: Color(0xff475569),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                key: const ValueKey('verify-owner-password-field'),
+                controller: _passwordController,
+                obscureText: _obscure,
+                autofocus: true,
+                onSubmitted: (_) => _verify(),
+                decoration: InputDecoration(
+                  hintText: 'Nhập mật khẩu...',
+                  hintStyle: const TextStyle(color: Color(0xff94a3b8)),
+                  errorText: _errorText,
+                  filled: true,
+                  fillColor: const Color(0xfff8fafc),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  suffixIcon: IconButton(
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: const Color(0xff94a3b8),
+                    ),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xffe2e8f0)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xffe2e8f0)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: Color(0xff0b57d0),
+                      width: 1.4,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).pop(false);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ForgotPasswordPage(
+                          authRepository: widget.authRepository,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Quên mật khẩu?',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xff0b57d0),
+                      decoration: TextDecoration.underline,
+                      decorationColor: Color(0xff0b57d0),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                height: 48,
+                child: FilledButton(
+                  key: const ValueKey('verify-owner-continue-btn'),
+                  onPressed: _submitting ? null : _verify,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xff0b57d0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Tiếp tục',
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupHeading extends StatelessWidget {
+  const _GroupHeading(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 2),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w700,
+          color: Color(0xff64748b),
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupCard extends StatelessWidget {
+  const _GroupCard({
+    required this.children,
+    this.borderColor,
+  });
 
   final List<Widget> children;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -597,13 +931,13 @@ class _SectionCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xffdfedf8)),
+        borderRadius: BorderRadius.circular(16),
+        border: borderColor != null ? Border.all(color: borderColor!) : null,
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: .04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -612,13 +946,52 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-class _AccountMenuRow extends StatelessWidget {
-  const _AccountMenuRow({
+class _BlueIconBox extends StatelessWidget {
+  const _BlueIconBox({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: const Color(0xffeaf2ff),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        icon,
+        size: 20,
+        color: const Color(0xff0b57d0),
+      ),
+    );
+  }
+}
+
+class _MenuDivider extends StatelessWidget {
+  const _MenuDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(
+      height: 1,
+      thickness: 0.8,
+      indent: 66,
+      color: Color(0xfff1f5f9),
+    );
+  }
+}
+
+class _MenuRow extends StatelessWidget {
+  const _MenuRow({
+    this.rowKey,
     required this.icon,
     required this.title,
     required this.onTap,
   });
 
+  final Key? rowKey;
   final IconData icon;
   final String title;
   final VoidCallback onTap;
@@ -626,26 +999,20 @@ class _AccountMenuRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
+      key: rowKey,
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.light,
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(icon, size: 20, color: AppColors.primary),
-            ),
+            _BlueIconBox(icon: icon),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
                 title,
                 style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   color: AppColors.text,
                 ),
               ),

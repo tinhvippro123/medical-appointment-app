@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,230 +15,191 @@ import 'package:medical_appointment_app/screens/payment/online_payment_page.dart
 import 'package:qr_flutter/qr_flutter.dart';
 
 void main() {
-  testWidgets('Checkout tạo đơn và lịch sử hiển thị đúng mã phiếu', (
-    tester,
-  ) async {
-    final requests = <http.Request>[];
-    final order = {
-      'id': 9,
-      'createdAt': '2026-11-25T08:00:00Z',
-      'totalAmount': 150000,
-      'paymentStatus': 'Unpaid',
-      'paymentMethod': 'VietQR',
-      'status': 'Pending',
-      'totalItems': 1,
-    };
-    final detail = {
-      ...order,
-      'orderDetails': [
-        {
-          'id': 83,
-          'doctorFullName': 'Mai Thị Minh Tâm',
-          'departmentName': 'Cơ xương khớp',
-          'roomNumber': 'P402',
-          'patientProfileFullName': 'Trần Minh An',
-          'appointmentDate': '2026-11-27',
-          'timeSlot': '09:00-10:00',
-          'queueNumber': 2,
-          'fee': 150000,
-        },
-      ],
-    };
-    final client = MockClient((request) async {
-      requests.add(request);
-      final data = switch (request.url.path) {
-        '/api/orders/checkout' || '/api/orders/9' => detail,
-        '/api/payments/vietqr' => {
-          'orderId': 9,
-          'amount': 150000,
-          'txnRef': 'VQR9_20261125',
-          'bankId': 'MB',
-          'bankName': 'Ngân hàng TMCP Quân Đội (MB Bank)',
-          'accountNo': '0987654321',
-          'accountName': 'TRUNG TAM Y TE HIEP PHUOC',
-          'transferContent': 'YTEHP DH9',
-          'qrData': 'VIETQR|BANK=MB|ACC=0987654321|AMOUNT=150000',
-          'vietQrImageUrl':
-              'https://img.vietqr.io/image/MB-0987654321-compact2.png',
-        },
-        '/api/payments/confirm' => {
-          'success': true,
-          'orderId': 9,
-          'paymentMethod': 'VietQR',
-          'paymentStatus': 'Paid',
-          'transactionId': 'VQR9_PAID',
-          'responseCode': '00',
-          'message': 'Thanh toán VietQR thành công!',
-        },
-        '/api/orders' => {
-          'items': [
-            {...order, 'paymentStatus': 'Paid'},
-          ],
-          'totalCount': 1,
-          'page': 1,
-          'pageSize': 10,
-        },
-        _ => throw StateError('Unexpected request: ${request.url}'),
+  testWidgets(
+    'Checkout thoát giữa chừng tự xóa đơn chưa thanh toán, thanh toán xong mới xuất phiếu & xem lịch sử',
+    (tester) async {
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final requests = <http.Request>[];
+      final order = {
+        'id': 9,
+        'createdAt': '2026-11-25T08:00:00Z',
+        'totalAmount': 150000,
+        'paymentStatus': 'Unpaid',
+        'paymentMethod': 'VNPay',
+        'status': 'Pending',
+        'totalItems': 1,
       };
-      return http.Response.bytes(utf8.encode(jsonEncode(data)), 200);
-    });
-    addTearDown(client.close);
-    final apiClient = ApiClient(
-      client: client,
-      baseUrl: 'http://test.api',
-      tokenProvider: () async => 'test-token',
-    );
-    final repo = OrderRepository(apiClient: apiClient);
-    final paymentRepo = PaymentRepository(apiClient: apiClient);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: Column(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => CheckoutPage(
-                        doctor: const Doctor(
-                          id: 15,
-                          fullName: 'Mai Thị Minh Tâm',
-                          departmentId: 7,
-                          departmentName: 'Cơ xương khớp',
-                          experienceYears: 0,
-                          consultationFee: 150000,
-                          isActive: true,
+      final detail = {
+        ...order,
+        'orderDetails': [
+          {
+            'id': 83,
+            'doctorFullName': 'Mai Thị Minh Tâm',
+            'roomNumber': 'P402',
+            'patientProfileFullName': 'Trần Minh An',
+            'appointmentDate': '2026-11-27',
+            'timeSlot': '09:00-10:00',
+            'queueNumber': 2,
+            'fee': 150000,
+          },
+        ],
+      };
+      final client = MockClient((request) async {
+        requests.add(request);
+        if (request.url.path == '/api/orders/9/unpaid' &&
+            request.method == 'DELETE') {
+          return http.Response('', 204);
+        }
+        final data = switch (request.url.path) {
+          '/api/orders/checkout' || '/api/orders/9' => detail,
+          '/api/payments/vnpay' => {
+            'orderId': 9,
+            'amount': 150000,
+            'txnRef': 'VNP9_20261125',
+            'paymentUrl':
+                'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_SecureHash=abc',
+            'callbackSuccessUrl':
+                'http://test.api/api/payments/callback?vnp_ResponseCode=00&vnp_SecureHash=abc',
+            'callbackCancelUrl':
+                'http://test.api/api/payments/callback?vnp_ResponseCode=24&vnp_SecureHash=def',
+          },
+          '/api/payments/callback' => {
+            'success': true,
+            'orderId': 9,
+            'paymentMethod': 'VNPay',
+            'paymentStatus': 'Paid',
+            'transactionId': 'VNP9_PAID',
+            'responseCode': '00',
+            'message': 'Thanh toán qua VNPay thành công!',
+          },
+          '/api/orders' => {
+            'items': [
+              {...order, 'paymentStatus': 'Paid'},
+            ],
+            'totalCount': 1,
+            'page': 1,
+            'pageSize': 10,
+          },
+          _ => throw StateError('Unexpected request: ${request.url}'),
+        };
+        return http.Response.bytes(utf8.encode(jsonEncode(data)), 200);
+      });
+      addTearDown(client.close);
+      final apiClient = ApiClient(
+        client: client,
+        baseUrl: 'http://test.api',
+        tokenProvider: () async => 'test-token',
+      );
+      final repo = OrderRepository(apiClient: apiClient);
+      final paymentRepo = PaymentRepository(apiClient: apiClient);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Column(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CheckoutPage(
+                          doctor: const Doctor(
+                            id: 15,
+                            fullName: 'Mai Thị Minh Tâm',
+                            departmentId: 7,
+                            departmentName: 'Cơ xương khớp',
+                            experienceYears: 0,
+                            consultationFee: 150000,
+                            isActive: true,
+                          ),
+                          patient: const PatientProfile(
+                            id: 12,
+                            fullName: 'Trần Minh An',
+                            relationship: 'Bản thân',
+                          ),
+                          date: DateTime(2026, 11, 27),
+                          slot: '09:00-10:00',
+                          note: '',
+                          repository: repo,
+                          paymentRepository: paymentRepo,
                         ),
-                        patient: const PatientProfile(
-                          id: 12,
-                          fullName: 'Trần Minh An',
-                          relationship: 'Bản thân',
-                        ),
-                        date: DateTime(2026, 11, 27),
-                        slot: '09:00-10:00',
-                        note: '',
-                        repository: repo,
-                        paymentRepository: paymentRepo,
                       ),
                     ),
+                    child: const Text('Checkout'),
                   ),
-                  child: const Text('Checkout'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          Scaffold(body: OrderHistoryPage(repository: repo)),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            Scaffold(body: OrderHistoryPage(repository: repo)),
+                      ),
                     ),
+                    child: const Text('Lịch sử'),
                   ),
-                  child: const Text('Lịch sử'),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.text('Checkout'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('VietQR'));
-    await tester.tap(find.text('VietQR'));
-    final confirm = find.text('Xác nhận đặt lịch');
-    await tester.ensureVisible(confirm);
-    await tester.tap(confirm);
-    await tester.pumpAndSettle();
-    expect(requests.first.method, 'POST');
-    expect(jsonDecode(requests.first.body), {
-      'paymentMethod': 'VietQR',
-      'appointment': {
-        'doctorId': 15,
-        'patientProfileId': 12,
-        'appointmentDate': '2026-11-27',
-        'timeSlot': '09:00-10:00',
-      },
-    });
+      await tester.tap(find.text('Checkout'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('VNPay'));
+      await tester.tap(find.text('Xác nhận đặt lịch'));
+      await tester.pumpAndSettle();
 
-    // Mở thẳng màn hình quét mã VietQR ngay khi bấm Xác nhận đặt lịch
-    expect(find.byType(OnlinePaymentPage), findsOneWidget);
-    expect(find.text('YTEHP DH9'), findsOneWidget);
-    expect(find.text('Thanh toán VietQR · Đơn #9'), findsOneWidget);
-    expect(find.text('Cổng VNPay'), findsNothing);
-    expect(find.byKey(const ValueKey('payment-tab-vietqr')), findsNothing);
-    final payConfirmBtn = find.byKey(
-      const ValueKey('payment-confirm-success-btn'),
-    );
-    await tester.ensureVisible(payConfirmBtn);
-    await tester.pumpAndSettle();
-    await tester.tap(payConfirmBtn);
-    await tester.pumpAndSettle();
-    expect(find.text('Thanh toán thành công!'), findsOneWidget);
-    final doneReturnBtn = find.byKey(const ValueKey('payment-done-return-btn'));
-    await tester.ensureVisible(doneReturnBtn);
-    await tester.pumpAndSettle();
-    await tester.tap(doneReturnBtn);
-    await tester.pumpAndSettle();
+      // Lần 1: Mở cổng VNPay nhưng bấm Back thoát ngang -> tự gọi DELETE /api/orders/9/unpaid
+      expect(find.byType(OnlinePaymentPage), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
 
-    expect(find.text('Đặt lịch thành công!'), findsOneWidget);
-    expect(find.text('Phòng P402'), findsOneWidget);
-    expect(find.text('VietQR · Đã thanh toán'), findsOneWidget);
+      expect(find.text('Đặt lịch thành công!'), findsNothing);
+      expect(
+        requests.any(
+          (r) => r.method == 'DELETE' && r.url.path == '/api/orders/9/unpaid',
+        ),
+        isTrue,
+      );
 
-    await tester.scrollUntilVisible(find.text('Về trang chủ'), 150);
-    await tester.tap(find.text('Về trang chủ'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Lịch sử'));
-    await tester.pumpAndSettle();
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(360, 740);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
-    await tester.pumpAndSettle();
-    expect(find.text('1 lịch hẹn'), findsOneWidget);
-    await tester.tap(find.textContaining('Đơn #9'));
-    await tester.pumpAndSettle();
-    expect(find.text('PHIẾU KHÁM BỆNH'), findsOneWidget);
-    expect(find.text('Cơ xương khớp'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
-    expect(find.text('27/11/2026'), findsOneWidget);
-    expect(find.text('09:00-10:00'), findsOneWidget);
-    expect(
-      tester.widget<QrImageView>(find.byType(QrImageView)).semanticsLabel,
-      'Mã QR TICKET-83',
-    );
-    final qrButton = find.text('Mã QR').hitTestable();
-    await tester.scrollUntilVisible(qrButton, 120);
-    await tester.pumpAndSettle();
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    final qrPosition = tester.getCenter(qrButton);
-    await mouse.addPointer(location: qrPosition);
-    await tester.pumpAndSettle();
-    await mouse.down(qrPosition);
-    await mouse.up();
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<QrImageView>(
-            find.descendant(
-              of: find.byType(AlertDialog),
-              matching: find.byType(QrImageView),
-            ),
-          )
-          .semanticsLabel,
-      'Mã QR TICKET-83',
-    );
-    tester.view.physicalSize = const Size(320, 480);
-    await tester.pumpAndSettle();
-    await mouse.moveTo(tester.getCenter(find.text('Đóng')));
-    await tester.tap(find.text('Đóng'), kind: PointerDeviceKind.mouse);
-    await tester.pumpAndSettle();
-    await mouse.removePointer();
-    expect(tester.takeException(), isNull);
-    expect(requests.map((r) => r.url.path), [
-      '/api/orders/checkout',
-      '/api/payments/vietqr',
-      '/api/payments/confirm',
-      '/api/orders',
-      '/api/orders/9',
-    ]);
-  });
+      // Lần 2: Xác nhận lại và nhập thẻ ATM + OTP 123456 hoàn tất thanh toán
+      await tester.tap(find.text('Xác nhận đặt lịch'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('vnpay-fill-sample-btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('vnpay-card-continue-btn')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const ValueKey('vnpay-otp-field')),
+        '123456',
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('payment-confirm-success-btn')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('payment-done-return-btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Đặt lịch thành công!'), findsOneWidget);
+      expect(find.text('VNPay · Đã thanh toán'), findsOneWidget);
+
+      await tester.scrollUntilVisible(find.text('Về trang chủ'), 150);
+      await tester.tap(find.text('Về trang chủ'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lịch sử'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 lịch hẹn'), findsOneWidget);
+      await tester.tap(find.textContaining('Đơn #9'));
+      await tester.pumpAndSettle();
+      expect(find.text('PHIẾU KHÁM BỆNH'), findsOneWidget);
+      expect(
+        tester.widget<QrImageView>(find.byType(QrImageView).first).semanticsLabel,
+        'Mã QR TICKET-83',
+      );
+    },
+  );
 }

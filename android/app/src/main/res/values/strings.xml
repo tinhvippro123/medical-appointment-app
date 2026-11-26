@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Y tế Hiệp Phước</string>
+    <string name="facebook_app_id">1176338708060798</string>
+    <string name="fb_login_protocol_scheme">fb1176338708060798</string>
+    <string name="facebook_client_token">6b6223f77d01d1c133197cb6c1dcd697</string>
+    <string name="zalo_app_id">1524482970029654651</string>
+    <string name="zalo_login_protocol_scheme">zalo-1524482970029654651</string>
+</resources>
