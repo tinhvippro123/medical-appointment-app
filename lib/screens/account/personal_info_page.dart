@@ -316,18 +316,14 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                       // Khối tóm tắt Avatar + SĐT phía trên
                       Container(
                         padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: Colors.white,
-                          borderRadius: const BorderRadius.vertical(
+                          borderRadius: BorderRadius.vertical(
                             bottom: Radius.circular(24),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          border: Border(
+                            bottom: BorderSide(color: Color(0xffe6eef6)),
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -336,14 +332,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                               height: 72,
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Color(0xff0b63e5),
-                                    Color(0xff3898ff),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
+                                color: AppColors.primary,
                               ),
                               child: const Icon(
                                 Icons.person_rounded,

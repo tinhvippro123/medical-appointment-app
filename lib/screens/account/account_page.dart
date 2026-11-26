@@ -88,17 +88,7 @@ class _AccountPageState extends State<AccountPage> {
     });
   }
 
-  Future<void> _openPersonalInfoWithPasswordCheck(SessionUser user) async {
-    final verified = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => _PasswordVerifyDialog(authRepository: _authRepo),
-    );
-
-    if (verified != true || !mounted) {
-      return;
-    }
-
+  Future<void> _openPersonalInfo(SessionUser user) async {
     final updatedProfile = await Navigator.of(context).push<MyProfile>(
       MaterialPageRoute(
         builder: (_) => PersonalInfoPage(
@@ -122,6 +112,27 @@ class _AccountPageState extends State<AccountPage> {
       });
       _showTopSuccessToast('Cập nhật thông tin thành công.');
     }
+  }
+
+  Future<void> _openChangePasswordWithPasswordCheck() async {
+    final verifiedPassword = await showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => _PasswordVerifyDialog(authRepository: _authRepo),
+    );
+
+    if (verifiedPassword == null || verifiedPassword.isEmpty || !mounted) {
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChangePasswordPage(
+          authRepository: _authRepo,
+          initialOldPassword: verifiedPassword,
+        ),
+      ),
+    );
   }
 
   Future<void> _logout() async {
@@ -223,21 +234,14 @@ class _AccountPageState extends State<AccountPage> {
                               rowKey: const ValueKey('account-personal-info-row'),
                               icon: Icons.person_rounded,
                               title: 'Thông tin cá nhân',
-                              onTap: () =>
-                                  _openPersonalInfoWithPasswordCheck(user),
+                              onTap: () => _openPersonalInfo(user),
                             ),
                             const _MenuDivider(),
                             _MenuRow(
                               rowKey: const ValueKey('account-change-pw-row'),
                               icon: Icons.vpn_key_rounded,
                               title: 'Thay đổi mật khẩu',
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => ChangePasswordPage(
-                                    authRepository: _authRepo,
-                                  ),
-                                ),
-                              ),
+                              onTap: _openChangePasswordWithPasswordCheck,
                             ),
                             const _MenuDivider(),
                             _MenuRow(
@@ -573,11 +577,7 @@ class _UmcCurvedHeader extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xff2c8cf4), Color(0xff0f62d6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.primary,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       child: Stack(
@@ -716,7 +716,7 @@ class _PasswordVerifyDialogState extends State<_PasswordVerifyDialog> {
     try {
       await widget.authRepository.verifyPasswordRequest(pw);
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(pw);
     } catch (e) {
       if (!mounted) return;
       setState(() => _errorText = '$e');
@@ -760,7 +760,7 @@ class _PasswordVerifyDialogState extends State<_PasswordVerifyDialog> {
                     alignment: Alignment.centerRight,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
-                      onTap: () => Navigator.of(context).pop(false),
+                      onTap: () => Navigator.of(context).pop(),
                       child: Container(
                         width: 30,
                         height: 30,
@@ -836,7 +836,7 @@ class _PasswordVerifyDialogState extends State<_PasswordVerifyDialog> {
               Center(
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.of(context).pop(false);
+                    Navigator.of(context).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => ForgotPasswordPage(
@@ -932,14 +932,9 @@ class _GroupCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: borderColor != null ? Border.all(color: borderColor!) : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: borderColor ?? const Color(0xffe6eef6),
+        ),
       ),
       child: Column(children: children),
     );

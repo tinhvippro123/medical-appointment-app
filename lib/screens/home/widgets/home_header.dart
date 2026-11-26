@@ -23,13 +23,7 @@ class HomeHeader extends StatelessWidget {
           left: 0,
           right: 0,
           height: MediaQuery.paddingOf(context).top,
-          child: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xff349ff0), Color(0xff2369d5)],
-              ),
-            ),
-          ),
+          child: const ColoredBox(color: AppColors.primary),
         ),
         SafeArea(
           bottom: false,
@@ -38,13 +32,7 @@ class HomeHeader extends StatelessWidget {
             child: ClipPath(
               clipper: _HeaderClipper(),
               child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xff349ff0), Color(0xff2369d5)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
+                color: AppColors.primary,
                 child: Stack(
                   children: [
                     const Positioned(

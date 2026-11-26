@@ -303,13 +303,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(color: const Color(0xffdfedf8)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: .04),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
                         ),
                         child: Column(
                           children: [
@@ -390,11 +383,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   Widget _buildHeader(String name, String phone) {
     return Container(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xff349ff0), Color(0xff2369d5)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
+        color: AppColors.primary,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       child: Stack(
@@ -539,13 +528,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xffdfedf8)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: .04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: IntrinsicHeight(
         child: Row(
@@ -676,13 +658,6 @@ class _AdminModuleCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xffdfedf8)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: .04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: InkWell(
         onTap: onTap,

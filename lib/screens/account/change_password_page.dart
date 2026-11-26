@@ -5,9 +5,14 @@ import '../../models/auth_models.dart';
 import '../../repositories/auth_repository.dart';
 
 class ChangePasswordPage extends StatefulWidget {
-  const ChangePasswordPage({super.key, this.authRepository});
+  const ChangePasswordPage({
+    super.key,
+    this.authRepository,
+    this.initialOldPassword,
+  });
 
   final AuthRepository? authRepository;
+  final String? initialOldPassword;
 
   @override
   State<ChangePasswordPage> createState() => _ChangePasswordPageState();
@@ -26,6 +31,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _obscureOld = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialOldPassword != null) {
+      _oldController.text = widget.initialOldPassword!;
+    }
+  }
 
   @override
   void dispose() {
@@ -127,13 +140,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: const Color(0xffdfedf8)),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: .04),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               child: Form(
                 key: _formKey,
@@ -215,9 +221,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     Container(
                       height: 50,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xff349ff0), Color(0xff2369d5)],
-                        ),
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Material(

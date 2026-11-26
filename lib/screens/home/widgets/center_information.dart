@@ -25,13 +25,6 @@ class CenterInformation extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: const Color(0xffdfedf8)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: .04),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

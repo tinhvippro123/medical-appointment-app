@@ -316,19 +316,8 @@ class _LoginPageState extends State<LoginPage> {
                 Container(
                   height: 50,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xff349ff0), Color(0xff2369d5)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xff2369d5).withValues(alpha: 0.3),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
                   ),
                   child: Material(
                     color: Colors.transparent,

@@ -31,16 +31,10 @@ class AppBottomNavigation extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 18),
       child: DecoratedBox(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.dark.withValues(alpha: .08),
-              blurRadius: 16,
-              offset: const Offset(0, -3),
-            ),
-          ],
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border(top: BorderSide(color: Color(0xffe2eaf3))),
         ),
         child: SafeArea(
           top: false,
@@ -80,30 +74,11 @@ class AppBottomNavigation extends StatelessWidget {
                                             height: 62,
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
-                                              gradient: const LinearGradient(
-                                                colors: [
-                                                  Color(0xff289afa),
-                                                  Color(0xff1465db),
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ),
+                                              color: AppColors.primary,
                                               border: Border.all(
                                                 color: Colors.white,
                                                 width: 4,
                                               ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: AppColors.primary
-                                                      .withValues(
-                                                        alpha: active
-                                                            ? .25
-                                                            : .08,
-                                                      ),
-                                                  blurRadius: active ? 14 : 4,
-                                                  offset: const Offset(0, 3),
-                                                ),
-                                              ],
                                             ),
                                             child: const Icon(
                                               Icons.home_rounded,

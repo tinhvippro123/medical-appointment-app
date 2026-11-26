@@ -7,6 +7,7 @@ import 'package:medical_appointment_app/core/theme/app_theme.dart';
 import 'package:medical_appointment_app/models/user_role_models.dart';
 import 'package:medical_appointment_app/repositories/auth_repository.dart';
 import 'package:medical_appointment_app/screens/account/account_page.dart';
+import 'package:medical_appointment_app/screens/account/change_password_page.dart';
 import 'package:medical_appointment_app/screens/account/personal_info_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -61,7 +62,7 @@ void main() {
   });
 
   testWidgets(
-    'AccountPage giao diện UMC Care -> Nhập mật khẩu xác thực chủ tài khoản -> Cập nhật Thông tin cá nhân -> Hiện thông báo nổi',
+    'AccountPage mở thẳng Thông tin cá nhân không cần mật khẩu, chỉ yêu cầu NHẬP MẬT KHẨU khi bấm Thay đổi mật khẩu',
     (tester) async {
       configureScreenSize(tester);
 
@@ -152,29 +153,11 @@ void main() {
       expect(find.text('Điều khoản dịch vụ'), findsOneWidget);
       expect(find.text('Phiên bản'), findsOneWidget);
 
-      // Bấm Thông tin cá nhân -> hiện popup NHẬP MẬT KHẨU
+      // Bấm Thông tin cá nhân -> mở thẳng PersonalInfoPage, KHÔNG hiện popup NHẬP MẬT KHẨU
       await tester.tap(find.byKey(const ValueKey('account-personal-info-row')));
       await tester.pumpAndSettle();
 
-      expect(find.text('NHẬP MẬT KHẨU'), findsOneWidget);
-
-      // Nhập mật khẩu sai -> báo lỗi ngay trong dialog
-      await tester.enterText(
-        find.byKey(const ValueKey('verify-owner-password-field')),
-        'sai-mk',
-      );
-      await tester.tap(find.byKey(const ValueKey('verify-owner-continue-btn')));
-      await tester.pumpAndSettle();
-      expect(find.text('Mật khẩu cũ không chính xác!'), findsOneWidget);
-
-      // Nhập mật khẩu đúng -> mở màn Thông tin cá nhân
-      await tester.enterText(
-        find.byKey(const ValueKey('verify-owner-password-field')),
-        '123456',
-      );
-      await tester.tap(find.byKey(const ValueKey('verify-owner-continue-btn')));
-      await tester.pumpAndSettle();
-
+      expect(find.text('NHẬP MẬT KHẨU'), findsNothing);
       expect(find.byType(PersonalInfoPage), findsOneWidget);
       expect(find.text('Thông tin tài khoản'), findsOneWidget);
 
@@ -205,6 +188,31 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Cập nhật thông tin thành công.'), findsOneWidget);
+
+      // Bấm Thay đổi mật khẩu -> hiện popup NHẬP MẬT KHẨU
+      await tester.tap(find.byKey(const ValueKey('account-change-pw-row')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('NHẬP MẬT KHẨU'), findsOneWidget);
+
+      // Nhập mật khẩu sai -> báo lỗi ngay trong dialog
+      await tester.enterText(
+        find.byKey(const ValueKey('verify-owner-password-field')),
+        'sai-mk',
+      );
+      await tester.tap(find.byKey(const ValueKey('verify-owner-continue-btn')));
+      await tester.pumpAndSettle();
+      expect(find.text('Mật khẩu cũ không chính xác!'), findsOneWidget);
+
+      // Nhập mật khẩu đúng -> mở màn ChangePasswordPage
+      await tester.enterText(
+        find.byKey(const ValueKey('verify-owner-password-field')),
+        '123456',
+      );
+      await tester.tap(find.byKey(const ValueKey('verify-owner-continue-btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ChangePasswordPage), findsOneWidget);
 
       // Cho hết timer 4s của banner để không còn pending timer
       await tester.pump(const Duration(seconds: 5));

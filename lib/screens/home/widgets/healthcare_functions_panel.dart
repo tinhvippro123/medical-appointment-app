@@ -86,20 +86,9 @@ class _HealthcareFunctionsPanelState extends State<HealthcareFunctionsPanel> {
       margin: const EdgeInsets.symmetric(horizontal: 12),
       padding: const EdgeInsets.fromLTRB(12, 16, 12, 20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xffdff5ff), Color(0xfff5fbff), Colors.white],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Colors.white, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: .05),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: const Color(0xffdfedf8), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,9 +112,9 @@ class _HealthcareFunctionsPanelState extends State<HealthcareFunctionsPanel> {
               ),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .65),
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: Colors.white),
+                  border: Border.all(color: const Color(0xffd7e8f8)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
